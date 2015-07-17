@@ -1,7 +1,6 @@
 package lss
 
 import (
-	"errors"
 	"fmt"
 	"github.com/kpmy/ypk/assert"
 	"io"
@@ -64,11 +63,13 @@ const (
 	True
 	False
 	Null
-	Undef
-	Nil
 
 	Unit
 	End
+	Var
+	Process
+
+	Eof
 )
 
 var keyTab map[string]Symbol
@@ -96,17 +97,17 @@ func Token(r rune) string {
 
 func init() {
 	keyTab = map[string]Symbol{"UNIT": Unit,
-		"END":   End,
-		"TRUE":  True,
-		"FALSE": False,
-		"NULL":  Null,
-		"INF":   Inf}
+		"END":     End,
+		"VAR":     Var,
+		"PROCESS": Process,
+		"TRUE":    True,
+		"FALSE":   False,
+		"NULL":    Null,
+		"INF":     Inf}
 }
 
 func (s Symbol) String() (ret string) {
 	switch s {
-	case Unit, End, True, False, Null, Inf:
-		ret = keyByTab(s)
 	case None:
 		ret = "none"
 	case Period:
@@ -192,7 +193,9 @@ func (s Symbol) String() (ret string) {
 	case Deref:
 		ret = "$"
 	default:
-		ret = fmt.Sprint("sym [", strconv.Itoa(int(s)), "]")
+		if ret = keyByTab(s); ret == "" {
+			ret = fmt.Sprint("sym [", strconv.Itoa(int(s)), "]")
+		}
 	}
 	return
 }
@@ -280,7 +283,7 @@ func (s *sc) mark(msg ...interface{}) {
 }
 
 func (s *sc) next() rune {
-	//	fmt.Print(Token2(s.ch))
+	//fmt.Print(Token2(s.ch))
 	read := 0
 	s.ch, read, s.err = s.rd.ReadRune()
 	if s.ch == '\r' || s.ch == '\n' {
@@ -600,7 +603,7 @@ func (s *sc) Get() (sym Sym) {
 			sym.Code = Deref
 			s.next()
 		case 0:
-			s.err = errors.New("eof")
+			sym.Code = Eof
 		default:
 			switch {
 			case unicode.IsLetter(s.ch):
@@ -620,11 +623,12 @@ func (s *sc) Get() (sym Sym) {
 }
 
 func (s *sc) Init(head Symbol, use ...Symbol) {
-	s.pos = 0
-	s.foreignTab = make(map[string]Foreign)
-	s.useTab = append(s.useTab, head)
-	s.useTab = append(s.useTab, use...)
-	s.lines.lens = make(map[int]func() (int, int))
-	s.lines.count++
-	s.next()
+	if s.pos == 0 {
+		s.foreignTab = make(map[string]Foreign)
+		s.useTab = append(s.useTab, head)
+		s.useTab = append(s.useTab, use...)
+		s.lines.lens = make(map[int]func() (int, int))
+		s.lines.count++
+		s.next()
+	}
 }

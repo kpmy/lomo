@@ -1,3 +1,9 @@
-UNIT Top
+UNIT Fly
+	VAR x- INTEGER
+PROCESS
+END Fly
 
-END Top.
+UNIT Top
+	VAR x*, y+, z- INTEGER; a, b, c Fly
+PROCESS
+END Top

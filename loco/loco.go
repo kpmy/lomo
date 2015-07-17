@@ -3,8 +3,9 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
 	"log"
+	"lomo/loco/lpp"
+	_ "lomo/loco/lpp/p"
 	"lomo/loco/lss"
 	"os"
 )
@@ -21,9 +22,9 @@ func main() {
 	if sname := name + ".lomo"; name != "" {
 		if f, err := os.Open(sname); err == nil {
 			sc := lss.ConnectTo(bufio.NewReader(f))
-			sc.Init(lss.Unit, lss.End)
-			for sc.Error() == nil {
-				fmt.Println(sc.Get())
+			for err == nil {
+				p := lpp.ConnectToUnit(sc)
+				err = p.Unit()
 			}
 		}
 	}
