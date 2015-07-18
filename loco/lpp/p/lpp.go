@@ -19,6 +19,7 @@ type Marker interface {
 type pr struct {
 	common
 	target
+	resolve lpp.ForeignResolver
 }
 
 func (p *pr) init() {
@@ -33,9 +34,9 @@ func (p *pr) typ(t *ir.Type) {
 	if it := types.TypMap[id]; it != types.UNDEF {
 		t.Basic = true
 		t.Builtin = &ir.BuiltinType{Code: it}
-	} else if true { //append import resolver
+	} else if ft := p.resolve(id); ft != nil { //append import resolver
 		t.Basic = false
-		t.Foreign = &ir.ForeignType{Name: id}
+		t.Foreign = ft
 	} else {
 		p.mark("undefined type ", id)
 	}
@@ -85,9 +86,9 @@ func (p *pr) rulesDecl() {
 	p.next()
 }
 
-func (p *pr) Unit() (err error) {
+func (p *pr) Unit() (u *ir.Unit, err error) {
 	if err = p.sc.Error(); err != nil {
-		return err
+		return nil, err
 	}
 	if !p.debug {
 		defer func() {
@@ -112,13 +113,15 @@ func (p *pr) Unit() (err error) {
 	p.expect(lss.Ident, "unit name expected", lss.Separator)
 
 	err = nil
+	u = p.target.unit
 	return
 }
 
-func lppc(sc lss.Scanner) lpp.UnitParser {
+func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
 	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process)
 	ret.sc = sc
+	ret.resolve = r
 	ret.init()
 	return ret
 }
