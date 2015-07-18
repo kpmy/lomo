@@ -2,9 +2,11 @@ package p
 
 import (
 	"errors"
-	"fmt"
 	"github.com/kpmy/ypk/assert"
 	"log"
+	"lomo/ir"
+	"lomo/ir/mods"
+	"lomo/ir/types"
 	"lomo/loco/lpp"
 	"lomo/loco/lss"
 )
@@ -21,13 +23,22 @@ type pr struct {
 
 func (p *pr) init() {
 	p.debug = true
+	p.target.marker = p
 	p.next()
 }
 
-func (p *pr) typ() {
+func (p *pr) typ(t *ir.Type) {
 	assert.For(p.sym.Code == lss.Ident, 20, "type identifier expected here but found ", p.sym.Code)
 	id := p.ident()
-	fmt.Println(id)
+	if it := types.TypMap[id]; it != types.UNDEF {
+		t.Basic = true
+		t.Builtin = &ir.BuiltinType{Code: it}
+	} else if true { //append import resolver
+		t.Basic = false
+		t.Foreign = &ir.ForeignType{Name: id}
+	} else {
+		p.mark("undefined type ", id)
+	}
 	p.next()
 }
 
@@ -36,11 +47,14 @@ func (p *pr) varDecl() {
 	p.next()
 	for {
 		if p.await(lss.Ident, lss.Delimiter, lss.Separator) {
+			var vl []*ir.Variable
 			for {
 				id := p.ident()
-				fmt.Println(id)
+				v := &ir.Variable{Name: id, Unit: p.target.unit}
+				vl = append(vl, v)
 				p.next()
 				if p.await(lss.Minus) || p.is(lss.Plus) || p.is(lss.Times) {
+					v.Modifier = mods.SymMod[p.sym.Code]
 					p.next()
 				}
 				if p.await(lss.Comma, lss.Separator) {
@@ -51,7 +65,12 @@ func (p *pr) varDecl() {
 				}
 			}
 			if p.await(lss.Ident, lss.Separator) {
-				p.typ()
+				tb := &ir.Type{}
+				p.typ(tb)
+				for _, v := range vl {
+					v.Type = tb
+					p.target.obj(v.Name, v)
+				}
 			} else {
 				p.mark("type or identifier expected")
 			}
@@ -81,7 +100,7 @@ func (p *pr) Unit() (err error) {
 	p.expect(lss.Unit, "UNIT expected", lss.Delimiter, lss.Separator)
 	p.next()
 	p.expect(lss.Ident, "unit name expected", lss.Separator)
-	p.do(p.ident())
+	p.target.init(p.ident())
 	p.next()
 	for p.await(lss.Var, lss.Separator, lss.Delimiter) {
 		p.varDecl()
