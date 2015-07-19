@@ -5,6 +5,8 @@ import (
 	"flag"
 	"log"
 	"lomo/ir"
+	"lomo/ir/target"
+	_ "lomo/ir/target/st"
 	"lomo/loco/lpp"
 	_ "lomo/loco/lpp/p"
 	"lomo/loco/lss"
@@ -35,7 +37,18 @@ func main() {
 			sc := lss.ConnectTo(bufio.NewReader(f))
 			for err == nil {
 				p := lpp.ConnectToUnit(sc, resolve)
-				_, err = p.Unit()
+				var u *ir.Unit
+				if u, err = p.Unit(); err == nil {
+
+					if f, err := os.Create(name + ".ui"); err == nil {
+						target.Impl.NewCode(u, f)
+						f.Close()
+					}
+					if f, err := os.Create(name + ".ud"); err == nil {
+						target.Impl.NewDef(ir.NewForeign(u), f)
+						f.Close()
+					}
+				}
 			}
 		}
 	}

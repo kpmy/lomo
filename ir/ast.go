@@ -9,6 +9,10 @@ type ForeignType struct {
 	Name string
 }
 
+func NewForeign(u *Unit) *ForeignType {
+	return &ForeignType{Name: u.Name}
+}
+
 type BuiltinType struct {
 	Code types.Type
 }
