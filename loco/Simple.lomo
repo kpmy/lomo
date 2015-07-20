@@ -7,4 +7,5 @@ UNIT Top
 	VAR w, x*, y+, z- INTEGER; a, b, c Fly
 PROCESS
 	w := 1
+	x := w
 END Top

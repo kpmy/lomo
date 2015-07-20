@@ -103,6 +103,12 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		e.EncodeToken(start)
 		e.EncodeToken(u.data(x.Type, x.Value))
 		e.EncodeToken(start.End())
+	case *ir.SelectExpr:
+		start.Name.Local = "selector"
+		u.attr(&start, "unit", x.Var.Unit.Name)
+		u.attr(&start, "id", x.Var.Name)
+		e.EncodeToken(start)
+		e.EncodeToken(start.End())
 	default:
 		halt.As(100, reflect.TypeOf(x))
 	}
@@ -110,6 +116,7 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 }
 
 type intern struct {
+	root    *ir.Unit
 	x       interface{}
 	consume func(interface{})
 }
@@ -146,6 +153,7 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "unit":
 		u := ir.NewUnit(i.attr(&start, "name").(string))
 		i.x = u
+		i.root = u
 		consumer = func(_x interface{}) {
 			switch x := _x.(type) {
 			case *ir.Variable:
@@ -206,6 +214,16 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		sd, _ := d.Token()
 		c.Value = i.data(c.Type, sd.(xml.CharData))
 		i.consume(c)
+		i.x = c
+	case "selector":
+		c := &ir.SelectExpr{}
+		if un := i.attr(&start, "unit").(string); un == i.root.Name {
+			c.Var = i.root.Variables[i.attr(&start, "id").(string)]
+		} else {
+			halt.As(100, un)
+		}
+		i.x = c
+		i.consume(c)
 	default:
 		halt.As(100, start.Name.Local)
 	}
@@ -214,7 +232,7 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		_t, err = d.Token()
 		switch t := _t.(type) {
 		case xml.StartElement:
-			x := &intern{}
+			x := &intern{root: i.root}
 			x.consume = consumer
 			d.DecodeElement(x, &t)
 		case xml.EndElement:

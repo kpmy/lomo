@@ -169,6 +169,12 @@ func (p *common) factor(b *exprBuilder) {
 		e := &ir.ConstExpr{Type: t, Value: v}
 		b.push(e)
 		p.next()
+	case p.is(lss.Ident):
+		id := p.ident()
+		v := b.tgt.unit.Variables[id]
+		e := &ir.SelectExpr{Var: v}
+		b.push(e)
+		p.next()
 	default:
 		p.mark(p.sym, " not an expression")
 	}

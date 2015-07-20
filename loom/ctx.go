@@ -99,9 +99,16 @@ func (ctx *context) init(m *mach) {
 	}
 }
 
-func (ctx *context) set(schema *ir.Variable, o object, v *value) {
-	fmt.Print(schema.Unit.Name, ".", schema.Name, " <- ", v)
-	o.set(v)
+func (ctx *context) set(schema *ir.Variable, v *value) {
+	fmt.Print(schema.Unit.Name, ".", schema.Name, " <- ", v, "\r")
+	ctx.objects[schema.Name].set(v)
+}
+
+func (ctx *context) get(schema *ir.Variable) *value {
+	fmt.Print(schema.Unit.Name, ".", schema.Name, " -> ")
+	v := ctx.objects[schema.Name].get()
+	fmt.Println(v)
+	return v
 }
 
 type exprStack struct {
@@ -137,6 +144,8 @@ func (ctx *context) expr(e ir.Expression) *value {
 		switch e := _e.(type) {
 		case *ir.ConstExpr:
 			stack.push(&value{typ: e.Type, val: e.Value})
+		case *ir.SelectExpr:
+			stack.push(ctx.get(e.Var))
 		default:
 			halt.As(100, reflect.TypeOf(e))
 		}
@@ -152,8 +161,7 @@ func (ctx *context) process() (stop bool) {
 	stop = true
 	for v, r := range ctx.owner.base.Rules {
 		count++
-		go func(v *ir.Variable, o object, _r ir.Rule) {
-			assert.For(o != nil, 60)
+		go func(v *ir.Variable, _r ir.Rule) {
 			<-starter
 			switch r := _r.(type) {
 			case *ir.ConditionalRule:
@@ -162,13 +170,13 @@ func (ctx *context) process() (stop bool) {
 					panic(0)
 				}
 				if !done {
-					ctx.set(v, o, ctx.expr(r.Default))
+					ctx.set(v, ctx.expr(r.Default))
 				}
 			default:
 				halt.As(100, reflect.TypeOf(r))
 			}
 			rg.Done()
-		}(ctx.owner.base.Variables[v], ctx.objects[v], r)
+		}(ctx.owner.base.Variables[v], r)
 	}
 	rg.Add(count)
 	for i := 0; i < count; i++ {

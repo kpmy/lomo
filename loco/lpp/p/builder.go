@@ -23,8 +23,8 @@ func (b *exprBuilder) init() {
 func (b *exprBuilder) push(_e ir.Expression) {
 	b.init()
 	switch e := _e.(type) {
-	case *ir.ConstExpr:
-		b.stack.PushFront(e)
+	case *ir.ConstExpr, *ir.SelectExpr:
+		b.stack.PushFront(e.(ir.Expression))
 	default:
 		halt.As(100, reflect.TypeOf(e))
 	}
