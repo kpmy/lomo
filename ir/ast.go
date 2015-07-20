@@ -26,17 +26,19 @@ type Type struct {
 type Variable struct {
 	Unit     *Unit
 	Name     string
-	Type     *Type
+	Type     Type
 	Modifier mods.Modifier
 }
 
 type Unit struct {
 	Name      string
 	Variables map[string]*Variable
+	Rules     map[string]Rule
 }
 
 func NewUnit(name string) *Unit {
 	u := &Unit{Name: name}
 	u.Variables = make(map[string]*Variable)
+	u.Rules = make(map[string]Rule)
 	return u
 }

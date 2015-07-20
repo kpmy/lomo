@@ -69,7 +69,10 @@ func (p *pr) varDecl() {
 				tb := &ir.Type{}
 				p.typ(tb)
 				for _, v := range vl {
-					v.Type = tb
+					v.Type = *tb
+					if !tb.Basic && v.Modifier != mods.NONE {
+						p.mark("only hidden foreigns allowed")
+					}
 					p.target.obj(v.Name, v)
 				}
 			} else {
@@ -84,6 +87,19 @@ func (p *pr) varDecl() {
 func (p *pr) rulesDecl() {
 	assert.For(p.sym.Code == lss.Process, 20, "PROCESS block expected")
 	p.next()
+	for p.await(lss.Ident, lss.Separator, lss.Delimiter) {
+		id := p.ident()
+		p.next()
+		if p.await(lss.Becomes, lss.Separator, lss.Delimiter) {
+			p.next()
+			p.pass(lss.Delimiter, lss.Separator)
+			expr := &exprBuilder{tgt: &p.target, marker: p}
+			p.expression(expr)
+			p.target.assign(id, expr)
+		} else {
+			p.mark("assignment expected")
+		}
+	}
 }
 
 func (p *pr) Unit() (u *ir.Unit, err error) {

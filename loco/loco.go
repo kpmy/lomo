@@ -10,7 +10,9 @@ import (
 	"lomo/loco/lpp"
 	_ "lomo/loco/lpp/p"
 	"lomo/loco/lss"
+	"lomo/loom"
 	"os"
+	"time"
 )
 
 var name string
@@ -39,17 +41,30 @@ func main() {
 				p := lpp.ConnectToUnit(sc, resolve)
 				var u *ir.Unit
 				if u, err = p.Unit(); err == nil {
-
-					if f, err := os.Create(name + ".ui"); err == nil {
+					if f, err := os.Create(u.Name + ".ui"); err == nil {
 						target.Impl.NewCode(u, f)
 						f.Close()
 					}
-					if f, err := os.Create(name + ".ud"); err == nil {
+					if f, err := os.Create(u.Name + ".ud"); err == nil {
 						target.Impl.NewDef(ir.NewForeign(u), f)
 						f.Close()
+					}
+					if u.Name == "Top" {
+						ld := func(name string) (ret *ir.Unit) {
+							if f, err := os.Open(u.Name + ".ui"); err == nil {
+								defer f.Close()
+								ret = target.Impl.OldCode(f)
+							}
+							return
+						}
+						m := loom.New(ld)
+						m.Start("Top")
+						time.Sleep(time.Second)
+						m.Stop()
 					}
 				}
 			}
 		}
 	}
+	loom.Exit()
 }

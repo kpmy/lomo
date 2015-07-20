@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
+	"lomo/ir"
+	"lomo/ir/types"
 	"lomo/loco/lss"
 )
 
@@ -130,4 +132,65 @@ func (p *common) ident() string {
 
 func (p *common) is(sym lss.Symbol) bool {
 	return p.sym.Code == sym
+}
+
+func (p *common) number() (t types.Type, v interface{}) {
+	assert.For(p.is(lss.Number), 20, "number expected here")
+	switch p.sym.NumberOpts.Modifier {
+	case "":
+		if p.sym.NumberOpts.Period {
+			//	t, v = types.REAL, p.sym.Str
+		} else {
+			//x, err := strconv.Atoi(p.sym.Str)
+			//assert.For(err == nil, 40)
+			t, v = types.INTEGER, p.sym.Str
+		}
+	case "U":
+		if p.sym.NumberOpts.Period {
+			p.mark("hex integer value expected")
+		}
+		//fmt.Println(p.sym)
+		//		if r, err := strconv.ParseUint(p.sym.Str, 16, 64); err == nil {
+		//	t = types.CHAR
+		//	v = rune(r)
+		//		} else {
+		//			p.mark("error while reading integer")
+		//		}
+	default:
+		p.mark("unknown number format `", p.sym.NumberOpts.Modifier, "`")
+	}
+	return
+}
+
+func (p *common) factor(b *exprBuilder) {
+	switch {
+	case p.is(lss.Number):
+		t, v := p.number()
+		e := &ir.ConstExpr{Type: t, Value: v}
+		b.push(e)
+		p.next()
+	default:
+		p.mark(p.sym, " not an expression")
+	}
+}
+
+func (p *common) cpx(b *exprBuilder) {
+	p.factor(b)
+}
+
+func (p *common) power(b *exprBuilder) {
+	p.cpx(b)
+}
+
+func (p *common) product(b *exprBuilder) {
+	p.power(b)
+}
+
+func (p *common) quantum(b *exprBuilder) {
+	p.product(b)
+}
+
+func (p *common) expression(b *exprBuilder) {
+	p.quantum(b)
+	p.pass(lss.Separator)
 }
