@@ -9,9 +9,9 @@ import (
 )
 
 type Target interface {
-	OldDef(io.Reader) *ir.ForeignType
+	OldDef(io.Reader) ir.ForeignType
 	OldCode(io.Reader) *ir.Unit
-	NewDef(*ir.ForeignType, io.Writer)
+	NewDef(ir.ForeignType, io.Writer)
 	NewCode(*ir.Unit, io.Writer)
 }
 

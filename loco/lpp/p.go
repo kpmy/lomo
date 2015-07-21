@@ -5,7 +5,7 @@ import (
 	"lomo/loco/lss"
 )
 
-type ForeignResolver func(name string) *ir.ForeignType
+type ForeignResolver func(name string) ir.ForeignType
 
 type UnitParser interface {
 	Unit() (*ir.Unit, error)

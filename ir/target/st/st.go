@@ -16,7 +16,8 @@ import (
 
 //dynamic xml marshaller
 type extern struct {
-	x interface{}
+	x       interface{}
+	shallow bool
 }
 
 func (u *extern) attr(start *xml.StartElement, name string, value interface{}) {
@@ -64,6 +65,15 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			e.Encode(n)
 		}
 		err = e.EncodeToken(start.End())
+	case ir.ForeignType:
+		start.Name.Local = "definition"
+		u.attr(&start, "name", x.Name())
+		err = e.EncodeToken(start)
+		for _, v := range x.Variables() {
+			n := &extern{x: v, shallow: true}
+			e.Encode(n)
+		}
+		err = e.EncodeToken(start.End())
 	case *ir.Variable:
 		switch x.Modifier {
 		case mods.IN:
@@ -80,12 +90,26 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		if x.Type.Basic {
 			u.attr(&start, "type", x.Type.Builtin.Code.String())
 		} else {
-			u.attr(&start, "type", x.Type.Foreign.Name)
+			u.attr(&start, "type", x.Type.Foreign.Name())
 		}
 		e.EncodeToken(start)
-		if r := x.Unit.Rules[x.Name]; r != nil {
-			n := &extern{x: r}
-			e.Encode(n)
+		if x.Type.Basic && !u.shallow {
+			if r := x.Unit.Rules[x.Name]; r != nil {
+				n := &extern{x: r}
+				e.Encode(n)
+			}
+		} else if !u.shallow {
+			if rr := x.Unit.ForeignRules[x.Name]; rr != nil {
+				for k, v := range rr {
+					rs := xml.StartElement{}
+					rs.Name.Local = "foreign"
+					u.attr(&rs, "id", k)
+					e.EncodeToken(rs)
+					n := &extern{x: v}
+					e.Encode(n)
+					e.EncodeToken(rs.End())
+				}
+			}
 		}
 		e.EncodeToken(start.End())
 	case *ir.ConditionalRule:
@@ -120,6 +144,15 @@ type intern struct {
 	x       interface{}
 	consume func(interface{})
 }
+
+type futureForeignType struct {
+	name     string
+	fakeUnit *ir.Unit
+}
+
+func (f *futureForeignType) Name() string { return f.name }
+
+func (f *futureForeignType) Variables() map[string]*ir.Variable { return f.fakeUnit.Variables }
 
 func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 	for _, x := range start.Attr {
@@ -163,6 +196,21 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				halt.As(100, reflect.TypeOf(x))
 			}
 		}
+	case "definition":
+		f := &futureForeignType{}
+		f.name = i.attr(&start, "name").(string)
+		i.x = f
+		f.fakeUnit = ir.NewUnit(f.name)
+		i.root = f.fakeUnit
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case *ir.Variable:
+				f.fakeUnit.Variables[x.Name] = x
+				x.Unit = f.fakeUnit
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
 	case "in", "var", "reg", "out":
 		v := &ir.Variable{}
 		v.Name = i.attr(&start, "name").(string)
@@ -179,19 +227,45 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 			halt.As(100, start.Name.Local)
 		}
 		v.Type.Basic = i.attr(&start, "builtin").(bool)
+		i.x = v
+		i.consume(v)
 		if v.Type.Basic {
 			v.Type.Builtin = &ir.BuiltinType{}
 			v.Type.Builtin.Code = types.TypMap[i.attr(&start, "type").(string)]
+			consumer = func(_x interface{}) {
+				switch x := _x.(type) {
+				case ir.Rule:
+					v.Unit.Rules[v.Name] = x
+				default:
+					halt.As(100, reflect.TypeOf(x))
+				}
+			}
 		} else {
-			v.Type.Foreign = &ir.ForeignType{}
-			v.Type.Foreign.Name = i.attr(&start, "type").(string)
+			ff := &futureForeignType{}
+			ff.name = i.attr(&start, "type").(string)
+			ff.fakeUnit = ir.NewUnit(ff.name)
+			v.Type.Foreign = ff
+			rr := make(map[string]ir.Rule)
+			v.Unit.ForeignRules[v.Name] = rr
+			consumer = func(_x interface{}) {
+				switch x := _x.(type) {
+				case map[string]ir.Rule:
+					for k, v := range x {
+						rr[k] = v
+					}
+				default:
+					halt.As(100, reflect.TypeOf(x))
+				}
+			}
 		}
-		i.x = v
-		i.consume(v)
+	case "foreign": //wrapper for local rules of foreign objects
+		id := i.attr(&start, "id").(string)
 		consumer = func(_x interface{}) {
 			switch x := _x.(type) {
 			case ir.Rule:
-				v.Unit.Rules[v.Name] = x
+				fn := make(map[string]ir.Rule)
+				fn[id] = x
+				i.consume(fn)
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -218,7 +292,12 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "selector":
 		c := &ir.SelectExpr{}
 		if un := i.attr(&start, "unit").(string); un == i.root.Name {
-			c.Var = i.root.Variables[i.attr(&start, "id").(string)]
+			go func(id string) {
+				for _, ok := i.root.Variables[id]; !ok; {
+				}
+				c.Var = i.root.Variables[id]
+				assert.For(c.Var != nil, 60)
+			}(i.attr(&start, "id").(string))
 		} else {
 			halt.As(100, un)
 		}
@@ -246,7 +325,18 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 
 type impl struct{}
 
-func (i *impl) OldDef(io.Reader) *ir.ForeignType { return nil }
+func (i *impl) OldDef(rd io.Reader) (f ir.ForeignType) {
+	it := &intern{}
+	buf := bytes.NewBuffer(nil)
+	io.Copy(buf, rd)
+	if err := xml.Unmarshal(buf.Bytes(), it); err == nil {
+		f, _ = it.x.(ir.ForeignType)
+	} else {
+		halt.As(100, err)
+	}
+	return
+}
+
 func (i *impl) OldCode(rd io.Reader) (u *ir.Unit) {
 	it := &intern{}
 	buf := bytes.NewBuffer(nil)
@@ -259,7 +349,16 @@ func (i *impl) OldCode(rd io.Reader) (u *ir.Unit) {
 	return
 }
 
-func (i *impl) NewDef(*ir.ForeignType, io.Writer) {}
+func (i *impl) NewDef(u ir.ForeignType, wr io.Writer) {
+	e := &extern{x: u}
+	if data, err := xml.Marshal(e); err == nil {
+		wr.Write([]byte(xml.Header))
+		io.Copy(wr, bytes.NewBuffer(data))
+	} else {
+		halt.As(100, err)
+	}
+}
+
 func (i *impl) NewCode(u *ir.Unit, wr io.Writer) {
 	e := &extern{x: u}
 	if data, err := xml.Marshal(e); err == nil {

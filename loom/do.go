@@ -1,6 +1,7 @@
 package loom
 
 import (
+	"fmt"
 	"github.com/kpmy/ypk/assert"
 	"lomo/ir"
 	"sync"
@@ -11,7 +12,8 @@ type Msg map[interface{}]interface{}
 type Loader func(string) *ir.Unit
 
 type Machine interface {
-	Start(name string)
+	Init(name string)
+	Start()
 	Stop()
 }
 
@@ -20,6 +22,12 @@ type mach struct {
 	ctrl   chan Msg
 	base   *ir.Unit
 	ctx    *context
+	imps   map[string]*mach
+}
+
+func (m *mach) init(ld Loader) {
+	m.loader = ld
+	m.imps = make(map[string]*mach)
 }
 
 func typeOf(m Msg) (ret string) {
@@ -29,32 +37,48 @@ func typeOf(m Msg) (ret string) {
 	return
 }
 
-func (m *mach) process() func() func() bool {
-	var pr func() bool
-	pr = func() bool {
-		//regular
-		return m.ctx.process()
-	}
+func imp(v *ir.Variable) string {
+	assert.For(!v.Type.Basic, 20)
+	return v.Unit.Name + ":" + v.Name
+}
 
-	return func() func() bool {
-		//init
-		m.ctx = &context{}
-		m.ctx.init(m)
-		return pr
+func (m *mach) prepare(v *ir.Variable) func() {
+	n := &mach{}
+	n.init(m.loader)
+	m.imps[imp(v)] = n
+	n.Init(v.Type.Foreign.Name())
+	return func() {
+		n.Start()
 	}
 }
 
-func (m *mach) Start(u string) {
+func (m *mach) process() func() (func(map[string]func()) bool, map[string]func()) {
+	var pr func(map[string]func()) bool
+	pr = func(d map[string]func()) bool {
+		//regular
+		return m.ctx.process(d)
+	}
+
+	return func() (func(map[string]func()) bool, map[string]func()) {
+		//init
+		m.ctx = &context{}
+		deps := m.ctx.init(m)
+		return pr, deps
+	}
+}
+
+func (m *mach) Init(u string) {
 	if m.ctrl == nil {
 		m.base = m.loader(u)
 		assert.For(m.base != nil, 20)
 		m.ctrl = make(chan Msg)
 		wg.Add(1)
+		init := m.process()
+		p, deps := init()
 		go func(owner *mach) {
-			init := owner.process()
-			p := init()
+			<-owner.ctrl
 			for stop := false; p != nil && !stop; {
-				stop = p()
+				stop = p(deps)
 				select {
 				case msg := <-owner.ctrl:
 					switch typeOf(msg) {
@@ -71,6 +95,13 @@ func (m *mach) Start(u string) {
 	}
 }
 
+func (m *mach) Start() {
+	if m.ctrl != nil {
+		fmt.Println("start", m.base.Name)
+		m.ctrl <- nil
+	}
+}
+
 func (m *mach) Stop() {
 	if m.ctrl != nil {
 		m.ctrl <- Msg{"type": "machine", "action": "stop"}
@@ -78,7 +109,9 @@ func (m *mach) Stop() {
 }
 
 func New(ld Loader) Machine {
-	return &mach{loader: ld}
+	m := &mach{}
+	m.init(ld)
+	return m
 }
 
 var wg *sync.WaitGroup

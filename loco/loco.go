@@ -21,12 +21,12 @@ func init() {
 	flag.StringVar(&name, "source", "Simple", "-source=name")
 }
 
-func resolve(name string) (ret *ir.ForeignType) {
+func resolve(name string) (ret ir.ForeignType) {
 	if fname := name + ".ud"; name != "" {
 		if f, err := os.Open(fname); err == nil {
+			ret = target.Impl.OldDef(f)
 			f.Close()
 		}
-		ret = &ir.ForeignType{Name: name}
 	}
 	return
 }
@@ -51,15 +51,16 @@ func main() {
 					}
 					if u.Name == "Top" {
 						ld := func(name string) (ret *ir.Unit) {
-							if f, err := os.Open(u.Name + ".ui"); err == nil {
+							if f, err := os.Open(name + ".ui"); err == nil {
 								defer f.Close()
 								ret = target.Impl.OldCode(f)
 							}
 							return
 						}
 						m := loom.New(ld)
-						m.Start("Top")
-						time.Sleep(time.Second)
+						m.Init("Top")
+						m.Start()
+						time.Sleep(1 * time.Second)
 						m.Stop()
 					}
 				}

@@ -19,7 +19,6 @@ type Marker interface {
 type pr struct {
 	common
 	target
-	resolve lpp.ForeignResolver
 }
 
 func (p *pr) init() {
@@ -70,6 +69,9 @@ func (p *pr) varDecl() {
 				p.typ(tb)
 				for _, v := range vl {
 					v.Type = *tb
+					if !tb.Basic {
+						p.target.foreign(v.Name, v)
+					}
 					if !tb.Basic && v.Modifier != mods.NONE {
 						p.mark("only hidden foreigns allowed")
 					}
@@ -89,13 +91,28 @@ func (p *pr) rulesDecl() {
 	p.next()
 	for p.await(lss.Ident, lss.Separator, lss.Delimiter) {
 		id := p.ident()
+		var fid string
 		p.next()
+		if p.is(lss.Period) {
+			u := p.target.unit.Variables[id]
+			if u.Type.Basic {
+				p.mark("only foreign types are selectable")
+			}
+			p.next()
+			p.expect(lss.Ident, "foreign variable expected")
+			fid = p.ident()
+			p.next()
+		} else {
+			fid = id
+			id = p.target.unit.Name
+		}
+		assert.For(fid != "", 40)
 		if p.await(lss.Becomes, lss.Separator, lss.Delimiter) {
 			p.next()
 			p.pass(lss.Delimiter, lss.Separator)
 			expr := &exprBuilder{tgt: &p.target, marker: p}
 			p.expression(expr)
-			p.target.assign(id, expr)
+			p.target.assign(id, fid, expr)
 		} else {
 			p.mark("assignment expected")
 		}

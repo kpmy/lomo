@@ -1,11 +1,12 @@
 UNIT Fly
-	VAR x- INTEGER
+	VAR x- INTEGER; m INTEGER
 PROCESS
+	m := x
 END Fly
 
 UNIT Top
 	VAR w, x*, y+, z- INTEGER; a, b, c Fly
 PROCESS
 	w := 1
-	x := w
+	a.x := w
 END Top

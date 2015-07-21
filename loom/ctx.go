@@ -23,14 +23,34 @@ type context struct {
 }
 
 type innie struct {
+	x *value
+	c chan *value
+	v *ir.Variable
 }
 
 func (i *innie) init(v *ir.Variable) {
-
+	i.c = make(chan *value)
+	i.v = v
 }
 
-func (o *innie) get() *value { panic(0) }
-func (o *innie) set(*value)  { panic(0) }
+func (i *innie) String() string {
+	return i.v.Unit.Name + "." + i.v.Name
+}
+
+func (o *innie) get() *value { return <-o.c }
+func (o *innie) set(x *value) {
+	assert.For(x != nil, 20)
+	if o.x == nil {
+		o.x = x
+		go func() {
+			for {
+				o.c <- o.x
+			}
+		}()
+	} else {
+		halt.As(100, "already assigned")
+	}
+}
 
 type outie struct {
 }
@@ -53,10 +73,16 @@ func (o *mem) set(*value)  { panic(0) }
 type direct struct {
 	x *value
 	c chan *value
+	v *ir.Variable
+}
+
+func (d *direct) String() string {
+	return d.v.Unit.Name + "." + d.v.Name
 }
 
 func (d *direct) init(v *ir.Variable) {
 	d.c = make(chan *value)
+	d.v = v
 }
 
 func (o *direct) get() *value {
@@ -91,24 +117,47 @@ func obj(v *ir.Variable) (ret object) {
 	ret.init(v)
 	return
 }
-func (ctx *context) init(m *mach) {
+func (ctx *context) init(m *mach) (ret map[string]func()) {
 	ctx.owner = m
 	ctx.objects = make(map[string]object)
+	ret = make(map[string]func())
 	for k, v := range m.base.Variables {
-		ctx.objects[k] = obj(v)
+		if v.Type.Basic {
+			ctx.objects[k] = obj(v)
+		} else {
+			f := m.loader(v.Type.Foreign.Name())
+			v.Type.Foreign = ir.NewForeign(f) //определения модулей не прогружаются при загрузке единичного модуля
+			ret[v.Name] = m.prepare(v)
+		}
 	}
+	return
 }
 
-func (ctx *context) set(schema *ir.Variable, v *value) {
-	fmt.Print(schema.Unit.Name, ".", schema.Name, " <- ", v, "\r")
-	ctx.objects[schema.Name].set(v)
+func (ctx *context) set0(o object, v *value) {
+	fmt.Println("set", o)
+	o.set(v)
 }
 
-func (ctx *context) get(schema *ir.Variable) *value {
-	fmt.Print(schema.Unit.Name, ".", schema.Name, " -> ")
-	v := ctx.objects[schema.Name].get()
-	fmt.Println(v)
-	return v
+func (ctx *context) get0(o object) *value {
+	defer fmt.Println("get", o)
+	return o.get()
+}
+
+func (ctx *context) foreign(schema *ir.Variable, id string) (ret object) {
+	assert.For(schema != nil, 20)
+	fmt.Println(ctx.owner.base.Name, "foreign", schema.Unit.Name, schema.Name, id, imp(schema))
+	f := ctx.owner.imps[imp(schema)].ctx
+	ret = f.objects[id]
+	assert.For(ret != nil, 60)
+	fmt.Println("found")
+	return
+}
+
+func (ctx *context) local(schema *ir.Variable) (ret object) {
+	assert.For(schema != nil, 20)
+	fmt.Println(schema.Unit.Name, schema.Name)
+	ret = ctx.objects[schema.Name]
+	return
 }
 
 type exprStack struct {
@@ -145,7 +194,7 @@ func (ctx *context) expr(e ir.Expression) *value {
 		case *ir.ConstExpr:
 			stack.push(&value{typ: e.Type, val: e.Value})
 		case *ir.SelectExpr:
-			stack.push(ctx.get(e.Var))
+			stack.push(ctx.get0(ctx.local(e.Var)))
 		default:
 			halt.As(100, reflect.TypeOf(e))
 		}
@@ -154,7 +203,22 @@ func (ctx *context) expr(e ir.Expression) *value {
 	return stack.pop()
 }
 
-func (ctx *context) process() (stop bool) {
+func (ctx *context) rule(o object, _r ir.Rule) {
+	switch r := _r.(type) {
+	case *ir.ConditionalRule:
+		done := false
+		for _, _ = range r.Blocks {
+			panic(0)
+		}
+		if !done {
+			ctx.set0(o, ctx.expr(r.Default))
+		}
+	default:
+		halt.As(100, reflect.TypeOf(r))
+	}
+}
+
+func (ctx *context) process(deps map[string]func()) (stop bool) {
 	rg := &sync.WaitGroup{}
 	starter := make(chan bool)
 	count := 0
@@ -163,20 +227,25 @@ func (ctx *context) process() (stop bool) {
 		count++
 		go func(v *ir.Variable, _r ir.Rule) {
 			<-starter
-			switch r := _r.(type) {
-			case *ir.ConditionalRule:
-				done := false
-				for _, _ = range r.Blocks {
-					panic(0)
-				}
-				if !done {
-					ctx.set(v, ctx.expr(r.Default))
-				}
-			default:
-				halt.As(100, reflect.TypeOf(r))
-			}
+			ctx.rule(ctx.local(v), _r)
 			rg.Done()
 		}(ctx.owner.base.Variables[v], r)
+	}
+	for v, r := range ctx.owner.base.ForeignRules {
+		o := ctx.owner.base.Variables[v]
+		for _, v := range o.Type.Foreign.Variables() {
+			if rr := r[v.Name]; rr != nil {
+				if pre := deps[o.Name]; pre != nil {
+					pre()
+				}
+				count++
+				go func(f, v *ir.Variable, _r ir.Rule) {
+					<-starter
+					ctx.rule(ctx.foreign(f, v.Name), _r)
+					rg.Done()
+				}(o, v, rr)
+			}
+		}
 	}
 	rg.Add(count)
 	for i := 0; i < count; i++ {
