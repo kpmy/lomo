@@ -76,7 +76,10 @@ func (m *mach) Init(u string) {
 		init := m.process()
 		p, deps := init()
 		go func(owner *mach) {
-			<-owner.ctrl
+			if m := <-owner.ctrl; m != nil { //didn't even started
+				wg.Done()
+				return
+			}
 			for stop := false; p != nil && !stop; {
 				stop = p(deps)
 				select {
@@ -90,6 +93,9 @@ func (m *mach) Init(u string) {
 				}
 			}
 			owner.ctrl = nil
+			for _, m := range owner.imps {
+				m.Stop()
+			}
 			wg.Done()
 		}(m)
 	}

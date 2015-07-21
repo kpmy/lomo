@@ -12,7 +12,7 @@ import (
 )
 
 type object interface {
-	init(*ir.Variable)
+	init(*ir.Variable, chan bool)
 	set(*value)
 	get() *value
 }
@@ -20,16 +20,19 @@ type object interface {
 type context struct {
 	owner   *mach
 	objects map[string]object
+	ctrl    chan bool
 }
 
 type innie struct {
-	x *value
-	c chan *value
-	v *ir.Variable
+	x    *value
+	c    chan *value
+	v    *ir.Variable
+	ctrl chan bool
 }
 
-func (i *innie) init(v *ir.Variable) {
+func (i *innie) init(v *ir.Variable, ctrl chan bool) {
 	i.c = make(chan *value)
+	i.ctrl = ctrl
 	i.v = v
 }
 
@@ -43,8 +46,11 @@ func (o *innie) set(x *value) {
 	if o.x == nil {
 		o.x = x
 		go func() {
-			for {
-				o.c <- o.x
+			for stop := false; !stop; {
+				select {
+				case o.c <- o.x:
+				case stop = <-o.ctrl:
+				}
 			}
 		}()
 	} else {
@@ -55,7 +61,7 @@ func (o *innie) set(x *value) {
 type outie struct {
 }
 
-func (o *outie) init(v *ir.Variable) {
+func (o *outie) init(v *ir.Variable, ctrl chan bool) {
 
 }
 func (o *outie) get() *value { panic(0) }
@@ -64,25 +70,27 @@ func (o *outie) set(*value)  { panic(0) }
 type mem struct {
 }
 
-func (m *mem) init(v *ir.Variable) {
+func (m *mem) init(v *ir.Variable, ctrl chan bool) {
 
 }
 func (o *mem) get() *value { panic(0) }
 func (o *mem) set(*value)  { panic(0) }
 
 type direct struct {
-	x *value
-	c chan *value
-	v *ir.Variable
+	x    *value
+	c    chan *value
+	v    *ir.Variable
+	ctrl chan bool
 }
 
 func (d *direct) String() string {
 	return d.v.Unit.Name + "." + d.v.Name
 }
 
-func (d *direct) init(v *ir.Variable) {
+func (d *direct) init(v *ir.Variable, ctrl chan bool) {
 	d.c = make(chan *value)
 	d.v = v
+	d.ctrl = ctrl
 }
 
 func (o *direct) get() *value {
@@ -94,8 +102,11 @@ func (o *direct) set(x *value) {
 	if o.x == nil {
 		o.x = x
 		go func() {
-			for {
-				o.c <- o.x
+			for stop := false; !stop; {
+				select {
+				case o.c <- o.x:
+				case stop = <-o.ctrl:
+				}
 			}
 		}()
 	} else {
@@ -103,7 +114,7 @@ func (o *direct) set(x *value) {
 	}
 }
 
-func obj(v *ir.Variable) (ret object) {
+func obj(v *ir.Variable, ctrl chan bool) (ret object) {
 	switch v.Modifier {
 	case mods.IN:
 		ret = &innie{}
@@ -114,16 +125,17 @@ func obj(v *ir.Variable) (ret object) {
 	default: //var
 		ret = &direct{}
 	}
-	ret.init(v)
+	ret.init(v, ctrl)
 	return
 }
 func (ctx *context) init(m *mach) (ret map[string]func()) {
 	ctx.owner = m
 	ctx.objects = make(map[string]object)
 	ret = make(map[string]func())
+	ctx.ctrl = make(chan bool)
 	for k, v := range m.base.Variables {
 		if v.Type.Basic {
-			ctx.objects[k] = obj(v)
+			ctx.objects[k] = obj(v, ctx.ctrl)
 		} else {
 			f := m.loader(v.Type.Foreign.Name())
 			v.Type.Foreign = ir.NewForeign(f) //определения модулей не прогружаются при загрузке единичного модуля
@@ -131,6 +143,17 @@ func (ctx *context) init(m *mach) (ret map[string]func()) {
 		}
 	}
 	return
+}
+
+func (ctx *context) detach() {
+	for _, v := range ctx.owner.base.Variables {
+		if v.Type.Basic {
+			select {
+			case ctx.ctrl <- true:
+			default:
+			}
+		}
+	}
 }
 
 func (ctx *context) set0(o object, v *value) {
@@ -252,5 +275,7 @@ func (ctx *context) process(deps map[string]func()) (stop bool) {
 		starter <- true
 	}
 	rg.Wait()
+	ctx.detach()
+	fmt.Println(ctx.owner.base.Name, "halted")
 	return
 }
