@@ -23,7 +23,7 @@ func (m Modifier) String() string {
 }
 
 func init() {
-	ModSym = map[Modifier]lss.Symbol{IN: lss.Minus, OUT: lss.Plus, REG: lss.Times, NONE: lss.None}
+	ModSym = map[Modifier]lss.Symbol{IN: lss.Minus, OUT: lss.Plus, REG: lss.Reg, NONE: lss.None}
 	SymMod = make(map[lss.Symbol]Modifier)
 	for k, v := range ModSym {
 		SymMod[v] = k

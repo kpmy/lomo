@@ -43,7 +43,11 @@ func (p *pr) typ(t *ir.Type) {
 }
 
 func (p *pr) varDecl() {
-	assert.For(p.sym.Code == lss.Var, 20, "VAR block expected")
+	assert.For(p.sym.Code == lss.Var || p.sym.Code == lss.Reg, 20, "VAR block expected")
+	mod := mods.NONE
+	if p.is(lss.Reg) {
+		mod = mods.REG
+	}
 	p.next()
 	for {
 		if p.await(lss.Ident, lss.Delimiter, lss.Separator) {
@@ -53,9 +57,13 @@ func (p *pr) varDecl() {
 				v := &ir.Variable{Name: id, Unit: p.target.unit}
 				vl = append(vl, v)
 				p.next()
-				if p.await(lss.Minus) || p.is(lss.Plus) || p.is(lss.Times) {
+				if mod == mods.NONE && p.await(lss.Minus) || p.is(lss.Plus) {
 					v.Modifier = mods.SymMod[p.sym.Code]
 					p.next()
+				} else if mod != mods.NONE && p.is(lss.Minus) || p.is(lss.Plus) {
+					p.mark("registers private only")
+				} else if mod == mods.REG {
+					v.Modifier = mods.REG
 				}
 				if p.await(lss.Comma, lss.Separator) {
 					p.next()
@@ -136,7 +144,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 	p.expect(lss.Ident, "unit name expected", lss.Separator)
 	p.target.init(p.ident())
 	p.next()
-	for p.await(lss.Var, lss.Separator, lss.Delimiter) {
+	for p.await(lss.Var, lss.Separator, lss.Delimiter) || p.is(lss.Reg) {
 		p.varDecl()
 	}
 	p.expect(lss.Process, "PROCESS expected", lss.Delimiter, lss.Separator)
@@ -152,7 +160,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 
 func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
-	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process)
+	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg)
 	ret.sc = sc
 	ret.resolve = r
 	ret.init()

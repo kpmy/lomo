@@ -5,8 +5,9 @@ PROCESS
 END Fly
 
 UNIT Top
-	VAR w, x*, y+, z- INTEGER; a, b, c Fly
+	REG x INTEGER
+	VAR w, y+, z- INTEGER; a, b, c Fly
 PROCESS
-	w := 1
 	a.x := w
+	w := 1
 END Top

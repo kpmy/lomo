@@ -68,6 +68,7 @@ const (
 	End
 	Var
 	Process
+	Reg
 
 	Eof
 )
@@ -99,6 +100,7 @@ func init() {
 	keyTab = map[string]Symbol{"UNIT": Unit,
 		"END":     End,
 		"VAR":     Var,
+		"REG":     Reg,
 		"PROCESS": Process,
 		"TRUE":    True,
 		"FALSE":   False,
