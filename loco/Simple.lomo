@@ -5,10 +5,11 @@ PROCESS
 END Fly
 
 UNIT Die
-	VAR l, o+ INTEGER
+	VAR l, o+ INTEGER; f Fly
 PROCESS
 	o := l
 	l := 13
+	f.x := 44
 END Die
 
 UNIT Top
