@@ -4,10 +4,21 @@ PROCESS
 	m := x
 END Fly
 
+UNIT Die
+	VAR l, o+ INTEGER
+PROCESS
+	o := l
+	l := 13
+END Die
+
 UNIT Top
-	REG x INTEGER
-	VAR w, y+, z- INTEGER; a, b, c Fly
+	REG r INTEGER
+	VAR w, y+, z- INTEGER; a, b, c Fly; d Die
 PROCESS
 	a.x := w
-	w := 1
+	w := 18
+	b.x := r
+	r := 42
+	y := d.o
+	c.x := d.o
 END Top

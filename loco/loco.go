@@ -60,7 +60,10 @@ func main() {
 						m := loom.New(ld)
 						m.Init("Top")
 						m.Start()
-						time.Sleep(1 * time.Second)
+						time.Sleep(100 * time.Millisecond)
+						m.Reset()
+						m.Start()
+						time.Sleep(100 * time.Millisecond)
 						m.Stop()
 					}
 				}

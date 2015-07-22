@@ -16,7 +16,8 @@ type ConstExpr struct {
 func (c *ConstExpr) Print() string { return "const expr" }
 
 type SelectExpr struct {
-	Var *Variable
+	Var     *Variable
+	Foreign *Variable
 }
 
 func (s *SelectExpr) Print() string { return "select expr" }

@@ -131,6 +131,9 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		start.Name.Local = "selector"
 		u.attr(&start, "unit", x.Var.Unit.Name)
 		u.attr(&start, "id", x.Var.Name)
+		if x.Foreign != nil {
+			u.attr(&start, "foreign", x.Foreign.Name)
+		}
 		e.EncodeToken(start)
 		e.EncodeToken(start.End())
 	default:
@@ -297,7 +300,13 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				}
 				c.Var = i.root.Variables[id]
 				assert.For(c.Var != nil, 60)
+				if c.Foreign != nil {
+					//DO SOME CHECKS
+				}
 			}(i.attr(&start, "id").(string))
+			if foreign, ok := i.attr(&start, "foreign").(string); ok {
+				c.Foreign = &ir.Variable{Name: foreign}
+			}
 		} else {
 			halt.As(100, un)
 		}

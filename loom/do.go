@@ -3,6 +3,7 @@ package loom
 import (
 	"fmt"
 	"github.com/kpmy/ypk/assert"
+	"github.com/kpmy/ypk/halt"
 	"lomo/ir"
 	"sync"
 )
@@ -14,6 +15,7 @@ type Loader func(string) *ir.Unit
 type Machine interface {
 	Init(name string)
 	Start()
+	Reset()
 	Stop()
 }
 
@@ -23,6 +25,7 @@ type mach struct {
 	base   *ir.Unit
 	ctx    *context
 	imps   map[string]*mach
+	done   bool
 }
 
 func (m *mach) init(ld Loader) {
@@ -42,54 +45,49 @@ func imp(v *ir.Variable) string {
 	return v.Unit.Name + ":" + v.Name
 }
 
-func (m *mach) prepare(v *ir.Variable) func() {
+func (m *mach) prepare(v *ir.Variable) {
 	n := &mach{}
 	n.init(m.loader)
 	m.imps[imp(v)] = n
 	n.Init(v.Type.Foreign.Name())
-	return func() {
-		n.Start()
-	}
 }
 
-func (m *mach) process() func() (func(map[string]func()) bool, map[string]func()) {
-	var pr func(map[string]func()) bool
-	pr = func(d map[string]func()) bool {
-		//regular
-		return m.ctx.process(d)
+func (m *mach) handle(msg Msg) (stop bool) {
+	fmt.Println(m.base.Name, "handle", msg)
+	switch t := typeOf(msg); t {
+	case "machine":
+		action, _ := msg["action"].(string)
+		switch action {
+		case "stop":
+			m.ctx.detach(true)
+			stop = true
+		case "do":
+			m.ctx.process()
+		}
+	default:
+		halt.As(100, t)
 	}
+	return
+}
 
-	return func() (func(map[string]func()) bool, map[string]func()) {
-		//init
-		m.ctx = &context{}
-		deps := m.ctx.init(m)
-		return pr, deps
-	}
+func (m *mach) started(n *mach) bool {
+	return n.ctrl != nil && n.done
 }
 
 func (m *mach) Init(u string) {
+	fmt.Println("init", u)
 	if m.ctrl == nil {
 		m.base = m.loader(u)
 		assert.For(m.base != nil, 20)
 		m.ctrl = make(chan Msg)
+		m.ctx = &context{}
+		m.ctx.init(m)
 		wg.Add(1)
-		init := m.process()
-		p, deps := init()
 		go func(owner *mach) {
-			if m := <-owner.ctrl; m != nil { //didn't even started
-				wg.Done()
-				return
-			}
-			for stop := false; p != nil && !stop; {
-				stop = p(deps)
+			for stop := false; !stop; {
 				select {
 				case msg := <-owner.ctrl:
-					switch typeOf(msg) {
-					case "machine":
-						action, _ := msg["action"].(string)
-						stop = action == "stop"
-					}
-				default:
+					stop = m.handle(msg)
 				}
 			}
 			owner.ctrl = nil
@@ -103,14 +101,32 @@ func (m *mach) Init(u string) {
 
 func (m *mach) Start() {
 	if m.ctrl != nil {
-		fmt.Println("start", m.base.Name)
-		m.ctrl <- nil
+		if !m.done {
+			m.done = true
+			//fmt.Println("start", m.base.Name)
+			m.ctrl <- Msg{"type": "machine", "action": "do"}
+		}
+	} else {
+		halt.As(100, "not initialized")
+	}
+}
+
+func (m *mach) Reset() {
+	if m.ctrl != nil {
+		if m.done {
+			m.ctx.detach(false)
+			m.done = false
+		}
+	} else {
+		halt.As(100, "not initialized")
 	}
 }
 
 func (m *mach) Stop() {
 	if m.ctrl != nil {
 		m.ctrl <- Msg{"type": "machine", "action": "stop"}
+	} else {
+		halt.As(100, "not initialized")
 	}
 }
 

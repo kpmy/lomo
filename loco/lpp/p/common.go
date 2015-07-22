@@ -171,10 +171,34 @@ func (p *common) factor(b *exprBuilder) {
 		p.next()
 	case p.is(lss.Ident):
 		id := p.ident()
-		v := b.tgt.unit.Variables[id]
-		e := &ir.SelectExpr{Var: v}
-		b.push(e)
+		var fid string
+		var s *ir.SelectExpr
 		p.next()
+		if p.is(lss.Period) {
+			if u := b.tgt.unit.Variables[id]; u != nil {
+				if u.Type.Basic {
+					p.mark("only foreign types are selectable")
+				}
+				p.next()
+				p.expect(lss.Ident, "foreign variable expected")
+				fid = p.ident()
+				p.next()
+				sb := &selectBuilder{tgt: b.tgt, marker: p}
+				s = sb.foreign(id, fid)
+			} else {
+				p.mark("variable not found")
+			}
+		} else {
+			fid = id
+			id = b.tgt.unit.Name
+			if v := b.tgt.unit.Variables[fid]; v != nil {
+				s = &ir.SelectExpr{Var: v}
+			} else {
+				p.mark("variable not found")
+			}
+		}
+		assert.For(s != nil, 60)
+		b.push(s)
 	default:
 		p.mark(p.sym, " not an expression")
 	}
