@@ -73,6 +73,13 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			n := &extern{x: v, shallow: true}
 			e.Encode(n)
 		}
+		for _, v := range x.Imports() {
+			imp := xml.StartElement{}
+			imp.Name.Local = "import"
+			u.attr(&imp, "name", v)
+			e.EncodeToken(imp)
+			e.EncodeToken(imp.End())
+		}
 		err = e.EncodeToken(start.End())
 	case *ir.Variable:
 		switch x.Modifier {
@@ -151,11 +158,14 @@ type intern struct {
 type futureForeignType struct {
 	name     string
 	fakeUnit *ir.Unit
+	imps     []string
 }
 
 func (f *futureForeignType) Name() string { return f.name }
 
 func (f *futureForeignType) Variables() map[string]*ir.Variable { return f.fakeUnit.Variables }
+
+func (f *futureForeignType) Imports() []string { return f.imps }
 
 func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 	for _, x := range start.Attr {
@@ -210,6 +220,8 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 			case *ir.Variable:
 				f.fakeUnit.Variables[x.Name] = x
 				x.Unit = f.fakeUnit
+			case string:
+				f.imps = append(f.imps, x)
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -273,6 +285,9 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				halt.As(100, reflect.TypeOf(x))
 			}
 		}
+	case "import":
+		name := i.attr(&start, "name").(string)
+		i.consume(name)
 	case "select":
 		r := &ir.ConditionalRule{}
 		i.x = r

@@ -8,24 +8,35 @@ import (
 type ForeignType interface {
 	Name() string
 	Variables() map[string]*Variable
+	Imports() []string
 }
 
 type foreignType struct {
 	name      string
 	variables map[string]*Variable
+	imps      []string
 }
 
 func (f *foreignType) Name() string { return f.name }
 
 func (f *foreignType) Variables() map[string]*Variable { return f.variables }
 
+func (f *foreignType) Imports() []string { return f.imps }
+
 func NewForeign(u *Unit) ForeignType {
 	ret := &foreignType{name: u.Name}
 	ret.variables = make(map[string]*Variable)
+	imps := make(map[string]*Variable)
 	for k, v := range u.Variables {
 		if v.Modifier == mods.IN || v.Modifier == mods.OUT {
 			ret.variables[k] = v
 		}
+		if !v.Type.Basic {
+			imps[v.Type.Foreign.Name()] = v
+		}
+	}
+	for k, _ := range imps {
+		ret.imps = append(ret.imps, k)
 	}
 	return ret
 }

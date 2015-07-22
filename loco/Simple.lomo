@@ -5,7 +5,7 @@ PROCESS
 END Fly
 
 UNIT Die
-	VAR l, o+ INTEGER; f Fly
+	VAR l, o+ INTEGER; f Fly;
 PROCESS
 	o := l
 	l := 13
