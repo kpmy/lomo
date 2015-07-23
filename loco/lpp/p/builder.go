@@ -25,7 +25,16 @@ func (b *exprBuilder) push(_e ir.Expression) {
 	b.init()
 	switch e := _e.(type) {
 	case *ir.ConstExpr, *ir.SelectExpr:
-		b.stack.PushFront(e.(ir.Expression))
+		b.stack.PushFront(e)
+	case *ir.Dyadic:
+		e.Right = b.pop()
+		e.Left = b.pop()
+		b.stack.PushFront(e)
+	case *ir.Ternary:
+		e.Else = b.pop()
+		e.Then = b.pop()
+		e.If = b.pop()
+		b.stack.PushFront(e)
 	default:
 		halt.As(100, reflect.TypeOf(e))
 	}

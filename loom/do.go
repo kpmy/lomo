@@ -1,7 +1,6 @@
 package loom
 
 import (
-	"fmt"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"lomo/ir"
@@ -14,18 +13,18 @@ type Loader func(string) *ir.Unit
 
 type Machine interface {
 	Init(name string)
-	Start()
-	Reset()
+	Start(*sync.WaitGroup)
+	Wait()
 	Stop()
 }
 
 type mach struct {
-	loader Loader
-	ctrl   chan Msg
-	base   *ir.Unit
-	ctx    *context
-	imps   map[string]*mach
-	done   bool
+	loader  Loader
+	ctrl    chan Msg
+	base    *ir.Unit
+	ctx     *context
+	imps    map[string]*mach
+	started *sync.WaitGroup
 }
 
 func (m *mach) init(ld Loader) {
@@ -53,7 +52,7 @@ func (m *mach) prepare(v *ir.Variable) {
 }
 
 func (m *mach) handle(msg Msg) (stop bool) {
-	fmt.Println(m.base.Name, "handle", msg)
+	//fmt.Println(m.base.Name, "handle", msg)
 	switch t := typeOf(msg); t {
 	case "machine":
 		action, _ := msg["action"].(string)
@@ -61,8 +60,12 @@ func (m *mach) handle(msg Msg) (stop bool) {
 		case "stop":
 			m.ctx.detach(true)
 			stop = true
+			m.ctrl <- nil
 		case "do":
+			m.ctx.detach(false)
+			m.started.Add(1)
 			m.ctx.process()
+			m.started.Done()
 		}
 	default:
 		halt.As(100, t)
@@ -70,20 +73,18 @@ func (m *mach) handle(msg Msg) (stop bool) {
 	return
 }
 
-func (m *mach) started(n *mach) bool {
-	return n.ctrl != nil && n.done
-}
-
 func (m *mach) Init(u string) {
-	fmt.Println("init", u)
+	//fmt.Println("init", u)
 	if m.ctrl == nil {
 		m.base = m.loader(u)
 		assert.For(m.base != nil, 20)
-		m.ctrl = make(chan Msg)
+		ctrl := make(chan Msg)
 		m.ctx = &context{}
 		m.ctx.init(m)
 		wg.Add(1)
-		go func(owner *mach) {
+		go func(owner *mach, ctrl chan Msg) {
+			owner.ctrl = ctrl
+			owner.ctrl <- nil
 			for stop := false; !stop; {
 				select {
 				case msg := <-owner.ctrl:
@@ -95,28 +96,23 @@ func (m *mach) Init(u string) {
 				m.Stop()
 			}
 			wg.Done()
-		}(m)
+		}(m, ctrl)
+		<-ctrl
+		//fmt.Println("ready", u)
 	}
 }
 
-func (m *mach) Start() {
+func (m *mach) Wait() {
 	if m.ctrl != nil {
-		if !m.done {
-			m.done = true
-			//fmt.Println("start", m.base.Name)
-			m.ctrl <- Msg{"type": "machine", "action": "do"}
-		}
-	} else {
-		halt.As(100, "not initialized")
+		m.started.Wait()
 	}
 }
 
-func (m *mach) Reset() {
+func (m *mach) Start(wg *sync.WaitGroup) {
 	if m.ctrl != nil {
-		if m.done {
-			m.ctx.detach(false)
-			m.done = false
-		}
+		//fmt.Println("start", m.base.Name)
+		m.started = wg
+		m.ctrl <- Msg{"type": "machine", "action": "do"}
 	} else {
 		halt.As(100, "not initialized")
 	}
@@ -125,6 +121,7 @@ func (m *mach) Reset() {
 func (m *mach) Stop() {
 	if m.ctrl != nil {
 		m.ctrl <- Msg{"type": "machine", "action": "stop"}
+		<-m.ctrl
 	} else {
 		halt.As(100, "not initialized")
 	}

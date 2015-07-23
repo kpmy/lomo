@@ -5,6 +5,7 @@ import (
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"lomo/ir"
+	"lomo/ir/ops"
 	"lomo/ir/types"
 	"lomo/loco/lss"
 )
@@ -199,6 +200,8 @@ func (p *common) factor(b *exprBuilder) {
 		}
 		assert.For(s != nil, 60)
 		b.push(s)
+	case p.is(lss.Colon):
+		//skip for the parents
 	default:
 		p.mark(p.sym, " not an expression")
 	}
@@ -217,10 +220,56 @@ func (p *common) product(b *exprBuilder) {
 }
 
 func (p *common) quantum(b *exprBuilder) {
-	p.product(b)
+	switch {
+	case p.is(lss.Minus):
+		p.next()
+		p.pass(lss.Separator)
+		p.product(b)
+		b.push(&ir.Monadic{Op: ops.Neg})
+	default:
+		p.pass(lss.Separator)
+		p.product(b)
+	}
+	for stop := false; !stop; {
+		p.pass(lss.Separator)
+		switch op := p.sym.Code; op {
+		case lss.Plus, lss.Minus, lss.Or:
+			p.next()
+			p.pass(lss.Separator)
+			p.product(b)
+			b.push(&ir.Dyadic{Op: ops.Map(op)})
+		default:
+			stop = true
+		}
+	}
+}
+
+func (p *common) cmp(b *exprBuilder) {
+	p.pass(lss.Separator)
+	p.quantum(b)
+	p.pass(lss.Separator)
+	switch op := p.sym.Code; op {
+	case lss.Equal, lss.Nequal, lss.Geq, lss.Leq, lss.Gtr, lss.Lss:
+		p.next()
+		p.pass(lss.Separator)
+		p.quantum(b)
+		b.push(&ir.Dyadic{Op: ops.Map(op)})
+	}
+
 }
 
 func (p *common) expression(b *exprBuilder) {
-	p.quantum(b)
 	p.pass(lss.Separator)
+	p.cmp(b)
+	if p.await(lss.Quest, lss.Separator, lss.Delimiter) {
+		p.next()
+		p.pass(lss.Separator, lss.Delimiter)
+		p.expression(b)
+		p.expect(lss.Square, "expected `::` symbol", lss.Separator, lss.Delimiter)
+		p.next()
+		p.pass(lss.Separator, lss.Delimiter)
+		p.expression(b)
+		b.push(&ir.Ternary{})
+	}
+
 }

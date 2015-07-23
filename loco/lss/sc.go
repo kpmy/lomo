@@ -58,6 +58,8 @@ const (
 	Rbrux
 	Lbrux
 	Deref
+	Quest
+	Square
 
 	Inf
 	True
@@ -194,6 +196,10 @@ func (s Symbol) String() (ret string) {
 		ret = "<<"
 	case Deref:
 		ret = "$"
+	case Quest:
+		ret = "?"
+	case Square:
+		ret = "::"
 	default:
 		if ret = keyByTab(s); ret == "" {
 			ret = fmt.Sprint("sym [", strconv.Itoa(int(s)), "]")
@@ -509,6 +515,9 @@ func (s *sc) Get() (sym Sym) {
 			if ch := s.next(); ch == '=' {
 				s.next()
 				sym.Code = Becomes
+			} else if ch == ':' {
+				s.next()
+				sym.Code = Square
 			} else {
 				sym.Code = Colon
 			}
@@ -603,6 +612,9 @@ func (s *sc) Get() (sym Sym) {
 			s.next()
 		case '$':
 			sym.Code = Deref
+			s.next()
+		case '?':
+			sym.Code = Quest
 			s.next()
 		case 0:
 			sym.Code = Eof

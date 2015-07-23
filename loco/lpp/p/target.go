@@ -11,15 +11,41 @@ type variable struct {
 }
 
 type target struct {
-	name    string
-	unit    *ir.Unit
-	resolve lpp.ForeignResolver
-	marker  Marker
+	name     string
+	unit     *ir.Unit
+	_resolve lpp.ForeignResolver
+	marker   Marker
+	cache    map[string]ir.ForeignType
+}
+
+func (t *target) resolve(name string) (ret ir.ForeignType) {
+	var cyclic func(ir.ForeignType) bool
+	cyclic = func(ii ir.ForeignType) (ok bool) {
+		if ok = ii.Name() == t.unit.Name; !ok {
+			for i := 0; i < len(ii.Imports()) && !ok; i++ {
+				ok = ii.Imports()[i] == t.unit.Name
+			}
+		}
+		return
+	}
+	if ret = t.cache[name]; ret == nil {
+		if imp := t._resolve(name); imp != nil {
+			if !cyclic(imp) {
+				ret = imp
+				t.cache[name] = ret
+			} else {
+				t.marker.Mark("cyclic import")
+			}
+		}
+
+	}
+	return
 }
 
 func (t *target) init(mod string) {
 	t.name = mod
 	t.unit = ir.NewUnit(mod)
+	t.cache = make(map[string]ir.ForeignType)
 }
 
 func (t *target) obj(name string, obj *ir.Variable) {
@@ -41,8 +67,8 @@ func (t *target) assign(unit, name string, expr *exprBuilder) {
 			t.marker.Mark("variable is read-only")
 		}
 		if _, ok := t.unit.Rules[name]; !ok {
-			r := &ir.ConditionalRule{}
-			r.Default = expr.final()
+			r := &ir.AssignRule{}
+			r.Expr = expr.final()
 			t.unit.Rules[name] = r
 		} else {
 			t.marker.Mark("already assigned")
@@ -51,8 +77,8 @@ func (t *target) assign(unit, name string, expr *exprBuilder) {
 	foreign := func(v *ir.Variable) {
 		if _, ok := t.unit.ForeignRules[unit]; ok {
 			if _, ok := t.unit.ForeignRules[unit][name]; !ok {
-				r := &ir.ConditionalRule{}
-				r.Default = expr.final()
+				r := &ir.AssignRule{}
+				r.Expr = expr.final()
 				t.unit.ForeignRules[unit][name] = r
 			} else {
 				t.marker.Mark("already assigned")

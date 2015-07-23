@@ -8,10 +8,10 @@ import (
 	"io"
 	"lomo/ir"
 	"lomo/ir/mods"
+	"lomo/ir/ops"
 	"lomo/ir/target"
 	"lomo/ir/types"
 	"reflect"
-	"strconv"
 )
 
 //dynamic xml marshaller
@@ -119,13 +119,10 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			}
 		}
 		e.EncodeToken(start.End())
-	case *ir.ConditionalRule:
-		start.Name.Local = "select"
+	case *ir.AssignRule:
+		start.Name.Local = "becomes"
 		e.EncodeToken(start)
-		for _, _ = range x.Blocks {
-			panic(0)
-		}
-		n := &extern{x: x.Default}
+		n := &extern{x: x.Expr}
 		e.Encode(n)
 		e.EncodeToken(start.End())
 	case *ir.ConstExpr:
@@ -142,6 +139,35 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			u.attr(&start, "foreign", x.Foreign.Name)
 		}
 		e.EncodeToken(start)
+		e.EncodeToken(start.End())
+	case *ir.Dyadic:
+		start.Name.Local = "dyadic"
+		u.attr(&start, "op", x.Op.String())
+		e.EncodeToken(start)
+		{
+			n := &extern{x: x.Left}
+			e.Encode(n)
+		}
+		{
+			n := &extern{x: x.Right}
+			e.Encode(n)
+		}
+		e.EncodeToken(start.End())
+	case *ir.Ternary:
+		start.Name.Local = "ternary"
+		e.EncodeToken(start)
+		{
+			n := &extern{x: x.If}
+			e.Encode(n)
+		}
+		{
+			n := &extern{x: x.Then}
+			e.Encode(n)
+		}
+		{
+			n := &extern{x: x.Else}
+			e.Encode(n)
+		}
 		e.EncodeToken(start.End())
 	default:
 		halt.As(100, reflect.TypeOf(x))
@@ -184,9 +210,7 @@ func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 func (i *intern) data(t types.Type, cd xml.CharData) (ret interface{}) {
 	switch t {
 	case types.INTEGER:
-		x, err := strconv.Atoi(string(cd))
-		assert.For(err == nil, 60)
-		ret = x
+		ret = string(cd)
 	default:
 		halt.As(100, t)
 	}
@@ -288,14 +312,14 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "import":
 		name := i.attr(&start, "name").(string)
 		i.consume(name)
-	case "select":
-		r := &ir.ConditionalRule{}
+	case "becomes":
+		r := &ir.AssignRule{}
 		i.x = r
 		i.consume(r)
 		consumer = func(_x interface{}) {
 			switch x := _x.(type) {
 			case ir.Expression:
-				r.Default = x
+				r.Expr = x
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -310,15 +334,7 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "selector":
 		c := &ir.SelectExpr{}
 		if un := i.attr(&start, "unit").(string); un == i.root.Name {
-			go func(id string) {
-				for _, ok := i.root.Variables[id]; !ok; {
-				}
-				c.Var = i.root.Variables[id]
-				assert.For(c.Var != nil, 60)
-				if c.Foreign != nil {
-					//DO SOME CHECKS
-				}
-			}(i.attr(&start, "id").(string))
+			c.Var = &ir.Variable{Name: i.attr(&start, "id").(string)}
 			if foreign, ok := i.attr(&start, "foreign").(string); ok {
 				c.Foreign = &ir.Variable{Name: foreign}
 			}
@@ -327,6 +343,44 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		}
 		i.x = c
 		i.consume(c)
+	case "dyadic":
+		c := &ir.Dyadic{}
+		op := i.attr(&start, "op").(string)
+		c.Op = ops.OpMap[op]
+		i.x = c
+		i.consume(c)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				if c.Left == nil {
+					c.Left = x
+				} else {
+					c.Right = x
+				}
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "ternary":
+		t := &ir.Ternary{}
+		i.x = t
+		i.consume(t)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				if t.If == nil {
+					t.If = x
+				} else if t.Then == nil {
+					t.Then = x
+				} else if t.Else == nil {
+					t.Else = x
+				} else {
+					halt.As(100, "too much")
+				}
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
 	default:
 		halt.As(100, start.Name.Local)
 	}

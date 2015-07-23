@@ -12,12 +12,15 @@ import (
 	"lomo/loco/lss"
 	"lomo/loom"
 	"os"
+	"runtime"
+	"sync"
 	"time"
 )
 
 var name string
 
 func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	flag.StringVar(&name, "source", "Simple", "-source=name")
 }
 
@@ -52,19 +55,20 @@ func main() {
 					if u.Name == "Top" {
 						ld := func(name string) (ret *ir.Unit) {
 							if f, err := os.Open(name + ".ui"); err == nil {
-								defer f.Close()
 								ret = target.Impl.OldCode(f)
+								f.Close()
 							}
 							return
 						}
 						m := loom.New(ld)
 						m.Init("Top")
-						m.Start()
-						time.Sleep(100 * time.Millisecond)
-						m.Reset()
-						m.Start()
-						time.Sleep(100 * time.Millisecond)
+						wg := &sync.WaitGroup{}
+						for i := 0; i < 100; i++ {
+							m.Start(wg)
+							wg.Wait()
+						}
 						m.Stop()
+						time.Sleep(time.Millisecond * 200)
 					}
 				}
 			}

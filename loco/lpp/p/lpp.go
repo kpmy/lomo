@@ -22,7 +22,7 @@ type pr struct {
 }
 
 func (p *pr) init() {
-	p.debug = true
+	p.debug = false
 	p.target.marker = p
 	p.next()
 }
@@ -162,7 +162,7 @@ func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
 	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg)
 	ret.sc = sc
-	ret.resolve = r
+	ret._resolve = r
 	ret.init()
 	return ret
 }

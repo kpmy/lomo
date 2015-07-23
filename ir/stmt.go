@@ -4,13 +4,8 @@ type Rule interface {
 	Show() string
 }
 
-type ConditionalBlock struct {
-	Condition, Expr Expression
+type AssignRule struct {
+	Expr Expression
 }
 
-type ConditionalRule struct {
-	Blocks  []ConditionalBlock
-	Default Expression
-}
-
-func (r *ConditionalRule) Show() string { return "cond" }
+func (r *AssignRule) Show() string { return "assign" }

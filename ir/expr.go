@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"lomo/ir/ops"
 	"lomo/ir/types"
 )
 
@@ -21,3 +22,23 @@ type SelectExpr struct {
 }
 
 func (s *SelectExpr) Print() string { return "select expr" }
+
+type Monadic struct {
+	Op   ops.Operation
+	Expr Expression
+}
+
+func (m *Monadic) Print() string { return "monadic op" }
+
+type Dyadic struct {
+	Op          ops.Operation
+	Left, Right Expression
+}
+
+func (d *Dyadic) Print() string { return "dyadic op" }
+
+type Ternary struct {
+	If, Then, Else Expression
+}
+
+func (t *Ternary) Print() string { return "ternary op" }
