@@ -10,6 +10,7 @@ import (
 	"lomo/loco/lss"
 	"lomo/loom"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -39,9 +40,11 @@ func TestBasics(t *testing.T) {
 					}
 					m := loom.New(ld)
 					m.Init("Top")
-					m.Start()
-					time.Sleep(100 * time.Millisecond)
-					m.Start()
+					wg := &sync.WaitGroup{}
+					m.Start(wg)
+					wg.Wait()
+					m.Start(wg)
+					wg.Wait()
 					time.Sleep(100 * time.Millisecond)
 					m.Stop()
 				}

@@ -2,13 +2,10 @@ package loom
 
 import (
 	"container/list"
-	"fmt"
 	"github.com/kpmy/ypk/assert"
-	"github.com/kpmy/ypk/fn"
 	"github.com/kpmy/ypk/halt"
+	"log"
 	"lomo/ir"
-	"lomo/ir/mods"
-	"lomo/ir/types"
 	"reflect"
 	"sync"
 )
@@ -24,137 +21,17 @@ type context struct {
 	owner   *mach
 	objects map[string]object
 	ctrl    chan bool
+	rd      *sync.Mutex
+	wr      *sync.Mutex
 }
 
-type mem struct {
-	s    chan interface{}
-	c    chan interface{}
-	ctrl chan bool
-	v    *ir.Variable
-}
-
-func (o *mem) schema() *ir.Variable { return o.v }
-func (m *mem) String() string {
-	return m.v.Unit.Name + "." + m.v.Name
-}
-
-func (m *mem) defaults(v *ir.Variable) (ret *value) {
-	switch t := v.Type.Builtin.Code; t {
-	case types.INTEGER:
-		ret = &value{typ: types.INTEGER, val: NewInt(0)}
-	default:
-		halt.As(100, t)
-	}
-	return
-}
-
-func (m *mem) init(v *ir.Variable, ctrl chan bool) {
-	m.c = make(chan interface{})
-	m.s = make(chan interface{})
-	m.v = v
-	m.ctrl = ctrl
-	go func() {
-		x := <-m.s
-		var f interface{} //future
-		for stop := false; !stop; {
-			select {
-			case n := <-m.s:
-				f = n
-			case m.c <- x:
-			case s := <-m.ctrl:
-				if !s {
-					stop = true
-					//fmt.Println("dropped", m.v.Name)
-				} else {
-					if !fn.IsNil(f) {
-						x = f
-					}
-				}
-			}
-		}
-		fmt.Println(m, f)
-	}()
-	m.s <- m.defaults(v).val
-}
-
-func (o *mem) get() *value { return &value{typ: o.v.Type.Builtin.Code, val: <-o.c} }
-func (o *mem) set(v *value) {
-	assert.For(v != nil, 20)
-	o.s <- v.val
-}
-
-type direct struct {
-	s    chan interface{}
-	c    chan interface{}
-	v    *ir.Variable
-	ctrl chan bool
-}
-
-func (o *direct) schema() *ir.Variable { return o.v }
-func (d *direct) String() string {
-	return d.v.Unit.Name + "." + d.v.Name
-}
-
-func (d *direct) init(v *ir.Variable, ctrl chan bool) {
-	d.c = make(chan interface{})
-	d.s = make(chan interface{})
-	d.v = v
-	d.ctrl = ctrl
-	go func() {
-		var x interface{}
-		for stop := false; !stop; {
-			if fn.IsNil(x) {
-				select {
-				case x = <-d.s:
-				case s := <-d.ctrl:
-					stop = !s
-				}
-			} else {
-				select {
-				case d.c <- x:
-				case s := <-d.ctrl:
-					stop = !s
-					if s {
-						x = nil
-						for br := false; !br; {
-							select {
-							case _ = <-d.c:
-							default:
-								br = true
-							}
-						}
-					}
-				}
-			}
-		}
-		fmt.Println(d, x)
-	}()
-}
-
-func (o *direct) get() *value {
-	return &value{typ: o.v.Type.Builtin.Code, val: <-o.c}
-}
-
-func (o *direct) set(x *value) {
-	assert.For(x != nil, 20)
-	o.s <- x.val
-}
-
-func obj(v *ir.Variable, ctrl chan bool) (ret object) {
-	switch v.Modifier {
-	case mods.REG:
-		ret = &mem{}
-	default: //var
-		ret = &direct{}
-	}
-	ret.init(v, ctrl)
-	return
-}
 func (ctx *context) init(m *mach) {
 	//fmt.Println("init context", m.base.Name)
 	ctx.owner = m
 	ctx.objects = make(map[string]object)
 	ctx.ctrl = make(chan bool)
+	ctx.rd = new(sync.Mutex)
+	ctx.wr = new(sync.Mutex)
 	for k, v := range m.base.Variables {
 		if v.Type.Basic {
 			ctx.objects[k] = obj(v, ctx.ctrl)
@@ -167,7 +44,10 @@ func (ctx *context) init(m *mach) {
 	return
 }
 
-func (ctx *context) detach(full bool) {
+func (ctx *context) refresh(full bool) {
+	log.Println("refresh", ctx.owner.base.Name)
+	ctx.wr.Lock()
+	ctx.rd.Lock()
 	for _, v := range ctx.owner.base.Variables {
 		if v.Type.Basic {
 			//fmt.Println("drop", v.Unit.Name, v.Name)
@@ -177,27 +57,34 @@ func (ctx *context) detach(full bool) {
 			}
 		}
 	}
+	log.Println("refreshed", ctx.owner.base.Name)
+	ctx.rd.Unlock()
+	ctx.wr.Unlock()
 }
 
 func (ctx *context) set0(o object, v *value) {
-	//fmt.Println("set", o, v)
+	ctx.wr.Lock()
+	log.Println("set", o, v)
 	t := o.schema().Type.Builtin.Code
 	assert.For(compTypes(v.typ, t), 60)
 	o.set(conv(v, t))
+	ctx.wr.Unlock()
 }
 
 func (ctx *context) get0(o object) (v *value) {
-	//defer fmt.Println("get", o)
+	ctx.rd.Lock()
+	defer log.Println("get", o)
 	v = o.get()
+	ctx.rd.Unlock()
 	return
 }
 
-func (ctx *context) foreign(schema *ir.Variable, id string) (ret object) {
+func (ctx *context) foreign(schema *ir.Variable, id string) (c *context, ret object) {
 	assert.For(schema != nil, 20)
 	//fmt.Println(schema.Unit.Name, schema.Name, "foreign", id, imp(schema))
 	if pre := ctx.owner.imps[imp(schema)]; pre != nil {
-		pre.Start(ctx.owner.started)
 		ret = pre.ctx.objects[id]
+		c = pre.ctx
 	}
 	assert.For(ret != nil, 60)
 	return
@@ -248,7 +135,8 @@ func (ctx *context) expr(e ir.Expression) *value {
 			if e.Foreign == nil {
 				stack.push(ctx.get0(ctx.local(e.Var)))
 			} else {
-				stack.push(ctx.get0(ctx.foreign(e.Var, e.Foreign.Name)))
+				rd, obj := ctx.foreign(e.Var, e.Foreign.Name)
+				stack.push(rd.get0(obj))
 			}
 		case *ir.Dyadic:
 			var l, r *value
@@ -274,17 +162,17 @@ func (ctx *context) expr(e ir.Expression) *value {
 	return stack.pop()
 }
 
-func (ctx *context) rule(o object, _r ir.Rule) {
+func (ctx *context) rule(wr *context, o object, _r ir.Rule) {
 	switch r := _r.(type) {
 	case *ir.AssignRule:
-		ctx.set0(o, ctx.expr(r.Expr))
+		wr.set0(o, ctx.expr(r.Expr))
 	default:
 		halt.As(100, reflect.TypeOf(r))
 	}
 }
 
 func (ctx *context) process() {
-	//fmt.Println("process", ctx.owner.base.Name)
+	log.Println("process", ctx.owner.base.Name)
 	rg := &sync.WaitGroup{}
 	starter := make(chan bool)
 	count := 0
@@ -292,7 +180,7 @@ func (ctx *context) process() {
 		count++
 		go func(v *ir.Variable, _r ir.Rule) {
 			<-starter
-			ctx.rule(ctx.local(v), _r)
+			ctx.rule(ctx, ctx.local(v), _r)
 			rg.Done()
 		}(ctx.owner.base.Variables[v], r)
 	}
@@ -302,9 +190,9 @@ func (ctx *context) process() {
 			if rr := r[v.Name]; rr != nil {
 				count++
 				go func(f, v *ir.Variable, _r ir.Rule) {
-					pre := ctx.foreign(f, v.Name)
+					wr, pre := ctx.foreign(f, v.Name)
 					<-starter
-					ctx.rule(pre, _r)
+					ctx.rule(wr, pre, _r)
 					rg.Done()
 				}(o, v, rr)
 			}

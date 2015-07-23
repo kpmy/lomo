@@ -5,10 +5,9 @@ PROCESS
 END Fly
 
 UNIT Top
-	REG x INTEGER
-	VAR z INTEGER; f Fly
+	VAR f Fly
+	REG z INTEGER
 PROCESS
-	x := x + 1
-	z := x
+	z := z + 1
 	f.a := z
 END Top

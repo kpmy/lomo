@@ -63,7 +63,7 @@ func main() {
 						m := loom.New(ld)
 						m.Init("Top")
 						wg := &sync.WaitGroup{}
-						for i := 0; i < 100; i++ {
+						for i := 0; i < 50; i++ {
 							m.Start(wg)
 							wg.Wait()
 						}

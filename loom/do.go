@@ -58,12 +58,18 @@ func (m *mach) handle(msg Msg) (stop bool) {
 		action, _ := msg["action"].(string)
 		switch action {
 		case "stop":
-			m.ctx.detach(true)
+			m.ctx.refresh(true)
 			stop = true
 			m.ctrl <- nil
 		case "do":
-			m.ctx.detach(false)
+			sg := new(sync.WaitGroup)
+			for _, n := range m.imps {
+				n.ctx.refresh(false)
+				n.Start(sg)
+			}
+			sg.Wait()
 			m.started.Add(1)
+			m.ctx.refresh(false)
 			m.ctx.process()
 			m.started.Done()
 		}
