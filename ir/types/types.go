@@ -9,6 +9,7 @@ type Type int
 const (
 	UNDEF Type = iota
 	INTEGER
+	BOOLEAN
 
 	none
 )
@@ -19,6 +20,8 @@ func (t Type) String() string {
 		return "UNDEF"
 	case INTEGER:
 		return "INTEGER"
+	case BOOLEAN:
+		return "BOOLEAN"
 	default:
 		return strconv.Itoa(int(t))
 	}
