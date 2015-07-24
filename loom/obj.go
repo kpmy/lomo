@@ -14,6 +14,7 @@ type mem struct {
 	c    chan interface{}
 	ctrl chan bool
 	v    *ir.Variable
+	f    interface{}
 }
 
 func (o *mem) schema() *ir.Variable { return o.v }
@@ -31,38 +32,47 @@ func (m *mem) defaults(v *ir.Variable) (ret *value) {
 	return
 }
 
-func (m *mem) init(v *ir.Variable, ctrl chan bool) {
+func (m *mem) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 	m.c = make(chan interface{})
 	m.s = make(chan interface{})
 	m.v = v
 	m.ctrl = ctrl
 	go func() {
 		x := <-m.s
-		var f interface{} //future
+		m.ctrl <- true
 		for stop := false; !stop; {
 			select {
 			case n := <-m.s:
-				f = n
+				m.f = n
 			case m.c <- x:
 			case s := <-m.ctrl:
-				if !s {
+				if s {
 					stop = true
 					//fmt.Println("dropped", m.v.Name)
 				} else {
-					if !fn.IsNil(f) {
-						x = f
+					if !fn.IsNil(m.f) {
+						x = m.f
 					}
 				}
 			}
 		}
+		m.ctrl <- true
 	}()
-	m.s <- m.defaults(v).val
+	if len(def) != 0 && !fn.IsNil(def[0]) {
+		m.s <- def[0]
+	} else {
+		m.s <- m.defaults(v).val
+	}
 }
 
 func (o *mem) get() *value { return &value{typ: o.v.Type.Builtin.Code, val: <-o.c} }
 func (o *mem) set(v *value) {
 	assert.For(v != nil, 20)
 	o.s <- v.val
+}
+
+func (o *mem) control() chan bool {
+	return o.ctrl
 }
 
 type direct struct {
@@ -77,26 +87,27 @@ func (d *direct) String() string {
 	return d.v.Unit.Name + "." + d.v.Name
 }
 
-func (d *direct) init(v *ir.Variable, ctrl chan bool) {
+func (d *direct) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 	d.c = make(chan interface{})
 	d.s = make(chan interface{})
 	d.v = v
 	d.ctrl = ctrl
 	go func() {
+		d.ctrl <- true
 		var x interface{}
 		for stop := false; !stop; {
 			if fn.IsNil(x) {
 				select {
 				case x = <-d.s:
 				case s := <-d.ctrl:
-					stop = !s
+					stop = s
 				}
 			} else {
 				select {
 				case d.c <- x:
 				case s := <-d.ctrl:
-					stop = !s
-					if s {
+					stop = s
+					if !s {
 						x = nil
 						for br := false; !br; {
 							select {
@@ -109,6 +120,7 @@ func (d *direct) init(v *ir.Variable, ctrl chan bool) {
 				}
 			}
 		}
+		d.ctrl <- true
 	}()
 }
 
@@ -121,13 +133,17 @@ func (o *direct) set(x *value) {
 	o.s <- x.val
 }
 
-func obj(v *ir.Variable, ctrl chan bool) (ret object) {
+func (o *direct) control() chan bool {
+	return o.ctrl
+}
+
+func obj(v *ir.Variable, ctrl chan bool, userData ...interface{}) (ret object) {
 	switch v.Modifier {
 	case mods.REG:
 		ret = &mem{}
 	default: //var
 		ret = &direct{}
 	}
-	ret.init(v, ctrl)
+	ret.init(v, ctrl, userData...)
 	return
 }

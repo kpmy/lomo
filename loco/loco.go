@@ -13,8 +13,6 @@ import (
 	"lomo/loom"
 	"os"
 	"runtime"
-	"sync"
-	"time"
 )
 
 var name string
@@ -53,22 +51,24 @@ func main() {
 						f.Close()
 					}
 					if u.Name == "Top" {
+						cache := make(map[string]*ir.Unit)
 						ld := func(name string) (ret *ir.Unit) {
-							if f, err := os.Open(name + ".ui"); err == nil {
-								ret = target.Impl.OldCode(f)
+							if ret = cache[name]; ret == nil {
+								if f, err := os.Open(name + ".ui"); err == nil {
+									ret = target.Impl.OldCode(f)
+									cache[name] = ret
+								}
 								f.Close()
 							}
 							return
 						}
-						m := loom.New(ld)
-						m.Init("Top")
-						wg := &sync.WaitGroup{}
-						for i := 0; i < 50; i++ {
-							m.Start(wg)
-							wg.Wait()
+						var old loom.Cluster
+						for i := 0; i < 100; i++ {
+							mm := loom.Init("Top", ld)
+							loom.Do(mm, old).Wait()
+							loom.Close(mm).Wait()
+							old = mm
 						}
-						m.Stop()
-						time.Sleep(time.Millisecond * 200)
 					}
 				}
 			}

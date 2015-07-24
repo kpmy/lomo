@@ -1,13 +1,17 @@
 UNIT Fly
-	VAR a-, b INTEGER
+	VAR fa+, fb- INTEGER
+	VAR x INTEGER
 PROCESS
-	b := a
+	fa := 5
+	x := fb
 END Fly
 
 UNIT Top
-	VAR f Fly
-	REG z INTEGER
+	VAR tx, ty INTEGER; f0 Fly
+	REG r INTEGER
 PROCESS
-	z := z + 1
-	f.a := z
+	tx := 1 + f0.fa
+	ty := tx + 4
+	f0.fb := 44 + r
+	r := r + 1
 END Top
