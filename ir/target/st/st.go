@@ -60,6 +60,10 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		start.Name.Local = "unit"
 		u.attr(&start, "name", x.Name)
 		err = e.EncodeToken(start)
+		for _, c := range x.Const {
+			n := &extern{x: c}
+			e.Encode(n)
+		}
 		for _, v := range x.Variables {
 			n := &extern{x: v}
 			e.Encode(n)
@@ -125,14 +129,26 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		n := &extern{x: x.Expr}
 		e.Encode(n)
 		e.EncodeToken(start.End())
-	case *ir.ConstExpr:
+	case *ir.Const:
 		start.Name.Local = "constant"
+		u.attr(&start, "name", x.Name)
+		e.EncodeToken(start)
+		n := &extern{x: x.Expr}
+		e.Encode(n)
+		e.EncodeToken(start.End())
+	case *ir.ConstExpr:
+		start.Name.Local = "constant-expression"
 		u.attr(&start, "type", x.Type)
 		e.EncodeToken(start)
 		e.EncodeToken(u.data(x.Type, x.Value))
 		e.EncodeToken(start.End())
+	case *ir.NamedConstExpr:
+		start.Name.Local = "named-constant-expression"
+		u.attr(&start, "name", x.Named.Name)
+		e.EncodeToken(start)
+		e.EncodeToken(start.End())
 	case *ir.SelectExpr:
-		start.Name.Local = "selector"
+		start.Name.Local = "selector-expression"
 		u.attr(&start, "unit", x.Var.Unit.Name)
 		u.attr(&start, "id", x.Var.Name)
 		if x.Foreign != nil {
@@ -141,7 +157,7 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		e.EncodeToken(start)
 		e.EncodeToken(start.End())
 	case *ir.Monadic:
-		start.Name.Local = "monadic"
+		start.Name.Local = "monadic-expression"
 		u.attr(&start, "op", x.Op.String())
 		e.EncodeToken(start)
 		{
@@ -150,7 +166,7 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		}
 		e.EncodeToken(start.End())
 	case *ir.Dyadic:
-		start.Name.Local = "dyadic"
+		start.Name.Local = "dyadic-expression"
 		u.attr(&start, "op", x.Op.String())
 		e.EncodeToken(start)
 		{
@@ -163,7 +179,7 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		}
 		e.EncodeToken(start.End())
 	case *ir.Ternary:
-		start.Name.Local = "ternary"
+		start.Name.Local = "ternary-expression"
 		e.EncodeToken(start)
 		{
 			n := &extern{x: x.If}
@@ -238,6 +254,8 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 			case *ir.Variable:
 				u.Variables[x.Name] = x
 				x.Unit = u
+			case *ir.Const:
+				u.Const[x.Name] = x
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -334,13 +352,31 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 			}
 		}
 	case "constant":
+		c := &ir.Const{}
+		c.Name = i.attr(&start, "name").(string)
+		i.x = c
+		i.consume(c)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				c.Expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "named-constant-expression":
+		c := &ir.NamedConstExpr{}
+		c.Named = &ir.Const{Name: i.attr(&start, "name").(string)}
+		i.x = c
+		i.consume(c)
+	case "constant-expression":
 		c := &ir.ConstExpr{}
 		c.Type = types.TypMap[i.attr(&start, "type").(string)]
 		sd, _ := d.Token()
 		c.Value = i.data(c.Type, sd.(xml.CharData))
 		i.consume(c)
 		i.x = c
-	case "selector":
+	case "selector-expression":
 		c := &ir.SelectExpr{}
 		if un := i.attr(&start, "unit").(string); un == i.root.Name {
 			c.Var = &ir.Variable{Name: i.attr(&start, "id").(string)}
@@ -352,7 +388,7 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		}
 		i.x = c
 		i.consume(c)
-	case "monadic":
+	case "monadic-expression":
 		m := &ir.Monadic{}
 		op := i.attr(&start, "op").(string)
 		m.Op = ops.OpMap[op]
@@ -366,7 +402,7 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				halt.As(100, reflect.TypeOf(x))
 			}
 		}
-	case "dyadic":
+	case "dyadic-expression":
 		c := &ir.Dyadic{}
 		op := i.attr(&start, "op").(string)
 		c.Op = ops.OpMap[op]
@@ -384,7 +420,7 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				halt.As(100, reflect.TypeOf(x))
 			}
 		}
-	case "ternary":
+	case "ternary-expression":
 		t := &ir.Ternary{}
 		i.x = t
 		i.consume(t)

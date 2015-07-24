@@ -56,6 +56,14 @@ func (t *target) obj(name string, obj *ir.Variable) {
 	}
 }
 
+func (t *target) c(c *ir.Const) {
+	if _, ok := t.unit.Const[c.Name]; !ok {
+		t.unit.Const[c.Name] = c
+	} else {
+		t.marker.Mark("identifier `", c.Name, "` already exists")
+	}
+}
+
 func (t *target) foreign(name string, obj *ir.Variable) {
 	r := make(map[string]ir.Rule)
 	t.unit.ForeignRules[name] = r

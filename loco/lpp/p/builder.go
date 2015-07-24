@@ -13,6 +13,7 @@ type exprBuilder struct {
 	tgt    *target
 	marker Marker
 	stack  *list.List
+	fwd    []func()
 }
 
 func (b *exprBuilder) init() {
@@ -24,7 +25,7 @@ func (b *exprBuilder) init() {
 func (b *exprBuilder) push(_e ir.Expression) {
 	b.init()
 	switch e := _e.(type) {
-	case *ir.ConstExpr, *ir.SelectExpr:
+	case *ir.ConstExpr, *ir.SelectExpr, *ir.NamedConstExpr:
 		b.stack.PushFront(e)
 	case *ir.Monadic:
 		e.Expr = b.pop()
@@ -51,6 +52,13 @@ func (b *exprBuilder) pop() (ret ir.Expression) {
 		halt.As(100, "pop on empty stack")
 	}
 	return
+}
+
+func (b *exprBuilder) forward(f func()) bool {
+	if b.fwd != nil {
+		b.fwd = append(b.fwd, f)
+	}
+	return b.fwd != nil
 }
 
 func (b *exprBuilder) final() (ret ir.Expression) {

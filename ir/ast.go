@@ -58,9 +58,16 @@ type Variable struct {
 	Modifier mods.Modifier
 }
 
+type Const struct {
+	Name     string
+	Expr     Expression
+	Modifier mods.Modifier
+}
+
 type Unit struct {
 	Name         string
 	Variables    map[string]*Variable
+	Const        map[string]*Const
 	Rules        map[string]Rule
 	ForeignRules map[string]map[string]Rule
 }
@@ -70,5 +77,6 @@ func NewUnit(name string) *Unit {
 	u.Variables = make(map[string]*Variable)
 	u.Rules = make(map[string]Rule)
 	u.ForeignRules = make(map[string]map[string]Rule)
+	u.Const = make(map[string]*Const)
 	return u
 }

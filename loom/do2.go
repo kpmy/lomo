@@ -55,6 +55,12 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 	var expr func(ir.Expression)
 	expr = func(_e ir.Expression) {
 		switch e := _e.(type) {
+		case *ir.NamedConstExpr:
+			if c := u.code.Const[e.Named.Name]; c != nil {
+				expr(c.Expr)
+			} else {
+				halt.As(100, "wrong constant name", e.Named.Name)
+			}
 		case *ir.ConstExpr:
 			stack.push(cval(e))
 		case *ir.SelectExpr:

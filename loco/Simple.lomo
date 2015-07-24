@@ -1,8 +1,14 @@
 UNIT Top
+
+	CONST
+		num = count - 1
+		len = 5
+		count  = len + 2
+		max = 10
+
 	REG r,  x INTEGER
-	VAR max INTEGER
+
 PROCESS
-	10 -> max
 	x >= 0 ? r + x : r -> r
 	x >= 0 ? x < max ? x + 1 : -1 : -1 -> x
 END Top
