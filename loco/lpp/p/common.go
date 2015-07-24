@@ -211,6 +211,12 @@ func (p *common) factor(b *exprBuilder) {
 		}
 		assert.For(s != nil, 60)
 		b.push(s)
+	case p.is(lss.True) || p.is(lss.False):
+		val := &ir.ConstExpr{}
+		val.Type = types.BOOLEAN
+		val.Value = (p.sym.Code == lss.True)
+		b.push(val)
+		p.next()
 	case p.is(lss.Colon):
 		//skip for the parents
 	default:
@@ -227,7 +233,21 @@ func (p *common) power(b *exprBuilder) {
 }
 
 func (p *common) product(b *exprBuilder) {
+	p.pass(lss.Separator)
 	p.power(b)
+	for stop := false; !stop; {
+		p.pass(lss.Separator)
+		switch op := p.sym.Code; op {
+		case lss.Times, lss.Div, lss.Mod, lss.Divide, lss.And:
+			p.next()
+			p.pass(lss.Separator)
+			p.power(b)
+			p.product(b)
+			b.push(&ir.Dyadic{Op: ops.Map(op)})
+		default:
+			stop = true
+		}
+	}
 }
 
 func (p *common) quantum(b *exprBuilder) {
@@ -276,7 +296,7 @@ func (p *common) expression(b *exprBuilder) {
 		p.next()
 		p.pass(lss.Separator, lss.Delimiter)
 		p.expression(b)
-		p.expect(lss.Colon, "expected `::` symbol", lss.Separator, lss.Delimiter)
+		p.expect(lss.Colon, "expected `:` symbol", lss.Separator, lss.Delimiter)
 		p.next()
 		p.pass(lss.Separator, lss.Delimiter)
 		p.expression(b)

@@ -33,7 +33,9 @@ func (m *mem) String() string {
 func (m *mem) defaults(v *ir.Variable) (ret *value) {
 	switch t := v.Type.Builtin.Code; t {
 	case types.INTEGER:
-		ret = &value{typ: types.INTEGER, val: NewInt(0)}
+		ret = &value{typ: t, val: NewInt(0)}
+	case types.BOOLEAN:
+		ret = &value{typ: t, val: false}
 	default:
 		halt.As(100, t)
 	}

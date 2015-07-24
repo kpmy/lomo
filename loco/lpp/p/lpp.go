@@ -202,7 +202,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 
 func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
-	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const)
+	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False)
 	ret.sc = sc
 	ret._resolve = r
 	ret.init()

@@ -56,6 +56,8 @@ func cval(e *ir.ConstExpr) (ret *value) {
 		} else {
 			halt.As(100, "wrong integer")
 		}
+	case types.BOOLEAN:
+		ret = &value{typ: t, val: e.Value.(bool)}
 	default:
 		halt.As(100, "unknown type ", t, " for ", e)
 	}

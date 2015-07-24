@@ -47,7 +47,13 @@ func (u *extern) attr(start *xml.StartElement, name string, value interface{}) {
 func (u *extern) data(t types.Type, _x interface{}) (ret xml.CharData) {
 	switch x := _x.(type) {
 	case string:
-		return xml.CharData(x)
+		ret = xml.CharData(x)
+	case bool:
+		if x {
+			ret = xml.CharData("true")
+		} else {
+			ret = xml.CharData("false")
+		}
 	default:
 		halt.As(100, reflect.TypeOf(x))
 	}
@@ -236,6 +242,8 @@ func (i *intern) data(t types.Type, cd xml.CharData) (ret interface{}) {
 	switch t {
 	case types.INTEGER:
 		ret = string(cd)
+	case types.BOOLEAN:
+		ret = string(cd) == "true"
 	default:
 		halt.As(100, t)
 	}

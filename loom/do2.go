@@ -93,12 +93,67 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 			stack.push(v)
 		case *ir.Dyadic:
 			var l, r *value
-			expr(e.Left)
-			l = stack.pop()
-			expr(e.Right)
-			r = stack.pop()
-			v := calcDyadic(l, e.Op, r)
-			stack.push(v)
+			if !(e.Op == ops.Or || e.Op == ops.And) {
+				expr(e.Left)
+				l = stack.pop()
+				expr(e.Right)
+				r = stack.pop()
+				v := calcDyadic(l, e.Op, r)
+				stack.push(v)
+			} else {
+				expr(e.Left)
+				l = stack.pop()
+				switch e.Op {
+				case ops.And:
+					switch l.typ {
+					case types.BOOLEAN:
+						lb := l.toBool()
+						if lb {
+							expr(e.Right)
+							r = stack.pop()
+							rb := r.toBool()
+							lb = lb && rb
+						}
+						stack.push(&value{typ: l.typ, val: lb})
+					/*case types.TRILEAN:
+					lt := l.toTril()
+					if !tri.False(lt) {
+						eval(this.Right)
+						r = ctx.pop()
+						rt := r.toTril()
+						lt = tri.And(lt, rt)
+					}
+					ctx.push(&value{typ: l.typ, val: lt})*/
+					default:
+						halt.As(100, "unexpected logical type")
+					}
+				case ops.Or:
+					switch l.typ {
+					case types.BOOLEAN:
+						lb := l.toBool()
+						if !lb {
+							expr(e.Right)
+							r = stack.pop()
+							rb := r.toBool()
+							lb = lb || rb
+						}
+						stack.push(&value{typ: l.typ, val: lb})
+					/*case types.TRILEAN:
+					lt := l.toTril()
+					if !tri.True(lt) {
+						eval(this.Right)
+						r = ctx.pop()
+						rt := r.toTril()
+						lt = tri.Or(lt, rt)
+					}
+					ctx.push(&value{typ: l.typ, val: lt})*/
+					default:
+						halt.As(100, "unexpected logical type")
+					}
+				default:
+					halt.As(100, "unknown dyadic op ", e.Op)
+				}
+			}
 		case *ir.Ternary:
 			expr(e.If)
 			c := stack.pop()
