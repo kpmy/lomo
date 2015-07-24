@@ -217,6 +217,11 @@ func (p *common) factor(b *exprBuilder) {
 		val.Value = (p.sym.Code == lss.True)
 		b.push(val)
 		p.next()
+	case p.is(lss.Not):
+		p.next()
+		p.factor(b)
+		p.pass(lss.Separator)
+		b.push(&ir.Monadic{Op: ops.Not})
 	case p.is(lss.Colon):
 		//skip for the parents
 	default:

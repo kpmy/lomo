@@ -2,7 +2,8 @@ UNIT Top
 	CONST
 		a = TRUE
 		b = FALSE
-	REG x BOOLEAN
+	REG x, n BOOLEAN
 PROCESS
 	b | x ? a & b : a | b -> x
+	~n -> n
 END Top

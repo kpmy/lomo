@@ -87,6 +87,22 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 				default:
 					halt.As(100, v.typ)
 				}
+			case ops.Not:
+				switch v.typ {
+				case types.BOOLEAN:
+					b := v.toBool()
+					v = &value{typ: v.typ, val: !b}
+				/*case types.TRILEAN:
+					t := v.toTril()
+					ctx.push(&value{typ: v.typ, val: tri.Not(t)})
+				case types.SET:
+					s := v.toSet()
+					ns := ThisSet(s)
+					ns.inv = !ns.inv
+					ctx.push(&value{typ: v.typ, val: ns})*/
+				default:
+					halt.As(100, "unexpected logical type")
+				}
 			default:
 				halt.As(100, e.Op)
 			}
