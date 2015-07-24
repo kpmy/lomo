@@ -16,6 +16,8 @@ type exprBuilder struct {
 	fwd    []func()
 }
 
+func (b *exprBuilder) Print() string { return "expr builder" }
+
 func (b *exprBuilder) init() {
 	if b.stack == nil {
 		b.stack = list.New()
@@ -25,6 +27,8 @@ func (b *exprBuilder) init() {
 func (b *exprBuilder) push(_e ir.Expression) {
 	b.init()
 	switch e := _e.(type) {
+	case *exprBuilder:
+		b.stack.PushFront(e.final())
 	case *ir.ConstExpr, *ir.SelectExpr, *ir.NamedConstExpr:
 		b.stack.PushFront(e)
 	case *ir.Monadic:
@@ -42,6 +46,7 @@ func (b *exprBuilder) push(_e ir.Expression) {
 	default:
 		halt.As(100, reflect.TypeOf(e))
 	}
+	//fmt.Println("push", _e)
 }
 
 func (b *exprBuilder) pop() (ret ir.Expression) {
@@ -51,6 +56,7 @@ func (b *exprBuilder) pop() (ret ir.Expression) {
 	} else {
 		halt.As(100, "pop on empty stack")
 	}
+	//fmt.Println("pop", ret)
 	return
 }
 

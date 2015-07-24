@@ -164,13 +164,13 @@ func (p *common) number() (t types.Type, v interface{}) {
 }
 
 func (p *common) factor(b *exprBuilder) {
-	switch {
-	case p.is(lss.Number):
+	switch p.sym.Code {
+	case lss.Number:
 		t, v := p.number()
 		e := &ir.ConstExpr{Type: t, Value: v}
 		b.push(e)
 		p.next()
-	case p.is(lss.Ident):
+	case lss.Ident:
 		id := p.ident()
 		var fid string
 		var s ir.Expression
@@ -211,18 +211,40 @@ func (p *common) factor(b *exprBuilder) {
 		}
 		assert.For(s != nil, 60)
 		b.push(s)
-	case p.is(lss.True) || p.is(lss.False):
+	case lss.True, lss.False:
 		val := &ir.ConstExpr{}
 		val.Type = types.BOOLEAN
 		val.Value = (p.sym.Code == lss.True)
 		b.push(val)
 		p.next()
-	case p.is(lss.Not):
+	case lss.Null:
+		val := &ir.ConstExpr{}
+		val.Type = types.TRILEAN
+		b.push(val)
+		p.next()
+	case lss.Not:
 		p.next()
 		p.factor(b)
 		p.pass(lss.Separator)
 		b.push(&ir.Monadic{Op: ops.Not})
-	case p.is(lss.Colon):
+	case lss.Lparen:
+		p.next()
+		expr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+		expr.fwd = append(expr.fwd, func() {
+			for i, x := range expr.fwd {
+				if i > 0 {
+					x()
+				}
+			}
+		})
+		p.expression(expr)
+		for _, f := range expr.fwd {
+			f()
+		}
+		p.expect(lss.Rparen, ") expected", lss.Separator)
+		p.next()
+		b.push(expr)
+	case lss.Colon:
 		//skip for the parents
 	default:
 		p.mark(p.sym, " not an expression")
@@ -235,6 +257,18 @@ func (p *common) cpx(b *exprBuilder) {
 
 func (p *common) power(b *exprBuilder) {
 	p.cpx(b)
+	for stop := false; !stop; {
+		p.pass(lss.Separator)
+		switch op := p.sym.Code; op {
+		case lss.ArrowUp:
+			p.next()
+			p.pass(lss.Separator)
+			p.cpx(b)
+			b.push(&ir.Dyadic{Op: ops.Map(op)})
+		default:
+			stop = true
+		}
+	}
 }
 
 func (p *common) product(b *exprBuilder) {
@@ -247,7 +281,6 @@ func (p *common) product(b *exprBuilder) {
 			p.next()
 			p.pass(lss.Separator)
 			p.power(b)
-			p.product(b)
 			b.push(&ir.Dyadic{Op: ops.Map(op)})
 		default:
 			stop = true

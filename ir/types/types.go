@@ -10,6 +10,8 @@ const (
 	UNDEF Type = iota
 	INTEGER
 	BOOLEAN
+	TRILEAN
+	ATOM
 
 	none
 )
@@ -22,6 +24,10 @@ func (t Type) String() string {
 		return "INTEGER"
 	case BOOLEAN:
 		return "BOOLEAN"
+	case TRILEAN:
+		return "TRILEAN"
+	case ATOM:
+		return "ATOM"
 	default:
 		return strconv.Itoa(int(t))
 	}

@@ -1,6 +1,7 @@
 package loom
 
 import (
+	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"lomo/ir/ops"
@@ -309,7 +310,7 @@ func b_c_c_(fn func(rune, rune) bool) func(rune, *value) bool {
 		return fn(lc, rc)
 	}
 }
-
+*/
 func b_b_(fn func(bool, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		lb := l.toBool()
@@ -352,6 +353,7 @@ func b_a_a_(fn func(Atom, Atom) bool) func(Atom, *value) bool {
 	}
 }
 
+/*
 func b_a_z_(fn func(Atom, *Any) bool) func(Atom, *value) bool {
 	return func(la Atom, r *value) bool {
 		rt := r.toAny()
@@ -365,7 +367,7 @@ func b_z_a_(fn func(*Any, Atom) bool) func(*Any, *value) bool {
 		return fn(lt, ra)
 	}
 }
-
+*/
 func b_t_b_(fn func(tri.Trit, bool) bool) func(tri.Trit, *value) bool {
 	return func(lt tri.Trit, r *value) bool {
 		rb := r.toBool()
@@ -380,6 +382,7 @@ func b_b_t_(fn func(bool, tri.Trit) bool) func(bool, *value) bool {
 	}
 }
 
+/*
 func s_(fn func(*value, *value) string) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.STRING}
@@ -735,7 +738,7 @@ func dyCHAR2STRING() {
 		return string(buf)
 	}))))
 }
-
+*/
 func dyABT() {
 	putDyadic(types.BOOLEAN, types.BOOLEAN, ops.Neq, b_(b_b_(b_b_b_(func(lb bool, rb bool) bool { return lb != rb }))))
 	putDyadic(types.BOOLEAN, types.BOOLEAN, ops.Eq, b_(b_b_(b_b_b_(func(lb bool, rb bool) bool { return lb == rb }))))
@@ -816,6 +819,7 @@ func dyABT() {
 	}))))
 }
 
+/*
 func dyANY() {
 	putDyadic(types.ANY, types.ANY, ops.Neq, b_(b_z_(b_z_z_(func(la *Any, ra *Any) bool {
 		neq := true
@@ -958,7 +962,7 @@ func init() {
 		dyINT2REAL()
 		dyREAL2COMPLEX()
 		dyCHAR2STRING()
-		dyABT()
+	*/dyABT() /*
 		dyANY()
 		dySET()
 		dyPTR()

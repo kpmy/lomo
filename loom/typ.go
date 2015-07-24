@@ -1,10 +1,13 @@
 package loom
 
 import (
+	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"lomo/ir/types"
 	"math/big"
 )
+
+type Atom string
 
 type Int struct {
 	big.Int
@@ -29,6 +32,8 @@ func (i *Int) String() string {
 
 func compTypes(propose, expect types.Type) (ret bool) {
 	switch {
+	case propose == types.BOOLEAN && expect == types.TRILEAN:
+		ret = true
 	case propose == expect:
 		ret = true
 	}
@@ -37,6 +42,10 @@ func compTypes(propose, expect types.Type) (ret bool) {
 
 func conv(v *value, target types.Type) (ret *value) {
 	switch {
+	case v.typ == types.BOOLEAN && target == types.TRILEAN:
+		b := v.toBool()
+		x := tri.This(b)
+		ret = &value{typ: target, val: x}
 	case v.typ == target:
 		ret = v
 	}

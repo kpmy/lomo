@@ -3,6 +3,7 @@ package st
 import (
 	"bytes"
 	"encoding/xml"
+	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"io"
@@ -54,6 +55,8 @@ func (u *extern) data(t types.Type, _x interface{}) (ret xml.CharData) {
 		} else {
 			ret = xml.CharData("false")
 		}
+	case nil:
+		ret = xml.CharData("null")
 	default:
 		halt.As(100, reflect.TypeOf(x))
 	}
@@ -244,6 +247,14 @@ func (i *intern) data(t types.Type, cd xml.CharData) (ret interface{}) {
 		ret = string(cd)
 	case types.BOOLEAN:
 		ret = string(cd) == "true"
+	case types.TRILEAN:
+		if s := string(cd); s == "null" {
+			ret = tri.NIL
+		} else if s == "true" {
+			ret = tri.TRUE
+		} else {
+			ret = tri.FALSE
+		}
 	default:
 		halt.As(100, t)
 	}

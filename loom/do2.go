@@ -1,6 +1,7 @@
 package loom
 
 import (
+	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"log"
@@ -92,14 +93,14 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 				case types.BOOLEAN:
 					b := v.toBool()
 					v = &value{typ: v.typ, val: !b}
-				/*case types.TRILEAN:
+				case types.TRILEAN:
 					t := v.toTril()
-					ctx.push(&value{typ: v.typ, val: tri.Not(t)})
-				case types.SET:
-					s := v.toSet()
-					ns := ThisSet(s)
-					ns.inv = !ns.inv
-					ctx.push(&value{typ: v.typ, val: ns})*/
+					stack.push(&value{typ: v.typ, val: tri.Not(t)})
+				/*case types.SET:
+				s := v.toSet()
+				ns := ThisSet(s)
+				ns.inv = !ns.inv
+				ctx.push(&value{typ: v.typ, val: ns})*/
 				default:
 					halt.As(100, "unexpected logical type")
 				}
@@ -131,15 +132,15 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 							lb = lb && rb
 						}
 						stack.push(&value{typ: l.typ, val: lb})
-					/*case types.TRILEAN:
-					lt := l.toTril()
-					if !tri.False(lt) {
-						eval(this.Right)
-						r = ctx.pop()
-						rt := r.toTril()
-						lt = tri.And(lt, rt)
-					}
-					ctx.push(&value{typ: l.typ, val: lt})*/
+					case types.TRILEAN:
+						lt := l.toTril()
+						if !tri.False(lt) {
+							expr(e.Right)
+							r = stack.pop()
+							rt := r.toTril()
+							lt = tri.And(lt, rt)
+						}
+						stack.push(&value{typ: l.typ, val: lt})
 					default:
 						halt.As(100, "unexpected logical type")
 					}
@@ -154,15 +155,15 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 							lb = lb || rb
 						}
 						stack.push(&value{typ: l.typ, val: lb})
-					/*case types.TRILEAN:
-					lt := l.toTril()
-					if !tri.True(lt) {
-						eval(this.Right)
-						r = ctx.pop()
-						rt := r.toTril()
-						lt = tri.Or(lt, rt)
-					}
-					ctx.push(&value{typ: l.typ, val: lt})*/
+					case types.TRILEAN:
+						lt := l.toTril()
+						if !tri.True(lt) {
+							expr(e.Right)
+							r = stack.pop()
+							rt := r.toTril()
+							lt = tri.Or(lt, rt)
+						}
+						stack.push(&value{typ: l.typ, val: lt})
 					default:
 						halt.As(100, "unexpected logical type")
 					}

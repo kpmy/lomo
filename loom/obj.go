@@ -1,6 +1,7 @@
 package loom
 
 import (
+	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/fn"
 	"github.com/kpmy/ypk/halt"
@@ -36,6 +37,8 @@ func (m *mem) defaults(v *ir.Variable) (ret *value) {
 		ret = &value{typ: t, val: NewInt(0)}
 	case types.BOOLEAN:
 		ret = &value{typ: t, val: false}
+	case types.TRILEAN:
+		ret = &value{typ: t, val: tri.NIL}
 	default:
 		halt.As(100, t)
 	}

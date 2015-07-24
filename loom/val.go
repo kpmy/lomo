@@ -3,6 +3,7 @@ package loom
 import (
 	"container/list"
 	"fmt"
+	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"lomo/ir"
@@ -18,6 +19,18 @@ type value struct {
 
 func (v *value) String() string {
 	return fmt.Sprint(v.val)
+}
+
+func (v *value) toAtom() (ret Atom) {
+	assert.For(v.typ == types.ATOM, 20)
+	switch x := v.val.(type) {
+	case Atom:
+		ret = x
+	case nil: //do nothing
+	default:
+		halt.As(100, "wrong atom ", reflect.TypeOf(x))
+	}
+	return
 }
 
 func (v *value) toInt() (ret *big.Int) {
@@ -45,6 +58,19 @@ func (v *value) toBool() (ret bool) {
 	return
 }
 
+func (v *value) toTril() (ret tri.Trit) {
+	assert.For(v.typ == types.TRILEAN || v.typ == types.BOOLEAN, 20, v.typ)
+	switch x := v.val.(type) {
+	case tri.Trit:
+		ret = x
+	case bool:
+		ret = tri.This(x)
+	default:
+		halt.As(100, "wrong trilean ", reflect.TypeOf(x))
+	}
+	return
+}
+
 func cval(e *ir.ConstExpr) (ret *value) {
 	t := e.Type
 	switch t {
@@ -58,6 +84,8 @@ func cval(e *ir.ConstExpr) (ret *value) {
 		}
 	case types.BOOLEAN:
 		ret = &value{typ: t, val: e.Value.(bool)}
+	case types.TRILEAN:
+		ret = &value{typ: t, val: tri.NIL}
 	default:
 		halt.As(100, "unknown type ", t, " for ", e)
 	}
