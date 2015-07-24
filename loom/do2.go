@@ -6,6 +6,8 @@ import (
 	"log"
 	"lomo/ir"
 	"lomo/ir/mods"
+	"lomo/ir/ops"
+	"lomo/ir/types"
 	"reflect"
 	"sync"
 )
@@ -66,6 +68,23 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 				}
 			}
 			stack.push(o.get())
+		case *ir.Monadic:
+			expr(e.Expr)
+			v := stack.pop()
+			switch e.Op {
+			case ops.Neg:
+				switch v.typ {
+				case types.INTEGER:
+					i := v.toInt()
+					i = i.Neg(i)
+					v = &value{typ: v.typ, val: ThisInt(i)}
+				default:
+					halt.As(100, v.typ)
+				}
+			default:
+				halt.As(100, e.Op)
+			}
+			stack.push(v)
 		case *ir.Dyadic:
 			var l, r *value
 			expr(e.Left)

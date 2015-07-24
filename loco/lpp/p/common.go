@@ -265,7 +265,7 @@ func (p *common) expression(b *exprBuilder) {
 		p.next()
 		p.pass(lss.Separator, lss.Delimiter)
 		p.expression(b)
-		p.expect(lss.Square, "expected `::` symbol", lss.Separator, lss.Delimiter)
+		p.expect(lss.Colon, "expected `::` symbol", lss.Separator, lss.Delimiter)
 		p.next()
 		p.pass(lss.Separator, lss.Delimiter)
 		p.expression(b)

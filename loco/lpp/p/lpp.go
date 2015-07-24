@@ -22,7 +22,7 @@ type pr struct {
 }
 
 func (p *pr) init() {
-	p.debug = false
+	p.debug = true
 	p.target.marker = p
 	p.next()
 }
@@ -97,7 +97,13 @@ func (p *pr) varDecl() {
 func (p *pr) rulesDecl() {
 	assert.For(p.sym.Code == lss.Process, 20, "PROCESS block expected")
 	p.next()
-	for p.await(lss.Ident, lss.Separator, lss.Delimiter) {
+	for stop := false; !stop; {
+		p.pass(lss.Delimiter, lss.Separator)
+		expr := &exprBuilder{tgt: &p.target, marker: p}
+		p.expression(expr)
+		p.expect(lss.ArrowRight, "assign expected", lss.Delimiter, lss.Separator)
+		p.next()
+		p.pass(lss.Delimiter, lss.Separator)
 		id := p.ident()
 		var fid string
 		p.next()
@@ -115,15 +121,9 @@ func (p *pr) rulesDecl() {
 			id = p.target.unit.Name
 		}
 		assert.For(fid != "", 40)
-		if p.await(lss.Becomes, lss.Separator, lss.Delimiter) {
-			p.next()
-			p.pass(lss.Delimiter, lss.Separator)
-			expr := &exprBuilder{tgt: &p.target, marker: p}
-			p.expression(expr)
-			p.target.assign(id, fid, expr)
-		} else {
-			p.mark("assignment expected")
-		}
+		p.target.assign(id, fid, expr)
+		p.pass(lss.Separator, lss.Delimiter)
+		stop = p.is(lss.End)
 	}
 }
 

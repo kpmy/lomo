@@ -1,17 +1,8 @@
-UNIT Fly
-	VAR fa+, fb- INTEGER
-	VAR x INTEGER
-PROCESS
-	fa := 5
-	x := fb
-END Fly
-
 UNIT Top
-	VAR tx, ty INTEGER; f0 Fly
-	REG r INTEGER
+	REG r,  x INTEGER
+	VAR max INTEGER
 PROCESS
-	tx := 1 + f0.fa
-	ty := tx + 4
-	f0.fb := 44 + r
-	r := r + 1
+	10 -> max
+	x >= 0 ? r + x : r -> r
+	x >= 0 ? x < max ? x + 1 : -1 : -1 -> x
 END Top

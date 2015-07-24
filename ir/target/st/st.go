@@ -140,6 +140,15 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		}
 		e.EncodeToken(start)
 		e.EncodeToken(start.End())
+	case *ir.Monadic:
+		start.Name.Local = "monadic"
+		u.attr(&start, "op", x.Op.String())
+		e.EncodeToken(start)
+		{
+			n := &extern{x: x.Expr}
+			e.Encode(n)
+		}
+		e.EncodeToken(start.End())
 	case *ir.Dyadic:
 		start.Name.Local = "dyadic"
 		u.attr(&start, "op", x.Op.String())
@@ -343,6 +352,20 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		}
 		i.x = c
 		i.consume(c)
+	case "monadic":
+		m := &ir.Monadic{}
+		op := i.attr(&start, "op").(string)
+		m.Op = ops.OpMap[op]
+		i.x = m
+		i.consume(m)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				m.Expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
 	case "dyadic":
 		c := &ir.Dyadic{}
 		op := i.attr(&start, "op").(string)

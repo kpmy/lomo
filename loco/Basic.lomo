@@ -2,26 +2,26 @@ UNIT Fly
 	VAR x- INTEGER; m INTEGER
 	REG num INTEGER
 PROCESS
-	m := x
-	num := num + 1
+	x -> m
+	num + 1 -> num
 END Fly
 
 UNIT Die
 	VAR l, o+ INTEGER; f Fly
 PROCESS
-	o := l
-	l := 13
-	f.x := 44
+	l -> o
+	13 -> l
+	44 -> f.x
 END Die
 
 UNIT Top
 	REG r INTEGER
 	VAR w, y+, z- INTEGER; a, b, c Fly; d Die
 PROCESS
-	a.x := w
-	w := 18
-	b.x := r
-	r := r + 1
-	y := d.o
-	c.x := d.o
+	w -> a.x
+	18 -> w
+	r -> b.x
+	r + 1 -> r
+	d.o -> y
+	d.o -> c.x
 END Top
