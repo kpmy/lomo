@@ -9,6 +9,14 @@ import (
 	"lomo/ir/types"
 )
 
+type object interface {
+	init(*ir.Variable, chan bool, ...interface{})
+	set(*value)
+	get() *value
+	schema() *ir.Variable
+	control() chan bool
+}
+
 type mem struct {
 	s    chan interface{}
 	c    chan interface{}
@@ -45,15 +53,7 @@ func (m *mem) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 			case n := <-m.s:
 				m.f = n
 			case m.c <- x:
-			case s := <-m.ctrl:
-				if s {
-					stop = true
-					//fmt.Println("dropped", m.v.Name)
-				} else {
-					if !fn.IsNil(m.f) {
-						x = m.f
-					}
-				}
+			case stop = <-m.ctrl:
 			}
 		}
 		m.ctrl <- true
@@ -99,24 +99,12 @@ func (d *direct) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 			if fn.IsNil(x) {
 				select {
 				case x = <-d.s:
-				case s := <-d.ctrl:
-					stop = s
+				case stop = <-d.ctrl:
 				}
 			} else {
 				select {
 				case d.c <- x:
-				case s := <-d.ctrl:
-					stop = s
-					if !s {
-						x = nil
-						for br := false; !br; {
-							select {
-							case _ = <-d.c:
-							default:
-								br = true
-							}
-						}
-					}
+				case stop = <-d.ctrl:
 				}
 			}
 		}

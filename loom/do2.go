@@ -19,6 +19,7 @@ type Unit struct {
 }
 
 func (u *Unit) init(old *Unit) {
+	log.Println("init", u.code.Name)
 	u.objects = make(map[string]object)
 	for k, v := range u.code.Variables {
 		if v.Type.Basic {
@@ -40,7 +41,7 @@ func (u *Unit) init(old *Unit) {
 }
 
 func set(o object, v *value) {
-	log.Println("set", o, v)
+	log.Println(o, "set", v)
 	t := o.schema().Type.Builtin.Code
 	assert.For(compTypes(v.typ, t), 60)
 	o.set(conv(v, t))
@@ -170,4 +171,21 @@ func Close(um Cluster) (ret *sync.WaitGroup) {
 		}(u)
 	}
 	return
+}
+
+type Loader func(string) *ir.Unit
+
+func imp(v *ir.Variable) string {
+	assert.For(!v.Type.Basic, 20)
+	return v.Unit.Name + ":" + v.Name
+}
+
+var _wg *sync.WaitGroup
+
+func init() {
+	_wg = &sync.WaitGroup{}
+}
+
+func Exit() {
+	_wg.Wait()
 }
