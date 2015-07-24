@@ -22,7 +22,7 @@ type pr struct {
 }
 
 func (p *pr) init() {
-	p.debug = false
+	p.debug = true
 	p.target.marker = p
 	p.next()
 }
@@ -40,6 +40,45 @@ func (p *pr) typ(t *ir.Type) {
 		p.mark("undefined type ", id)
 	}
 	p.next()
+}
+
+func (p *pr) constDecl() {
+	assert.For(p.is(lss.Const), 20, "CONST block expected")
+	p.next()
+	var fwd []func()
+	for {
+		if p.await(lss.Ident, lss.Separator, lss.Delimiter) {
+			id := p.ident()
+			p.next()
+			c := &ir.Const{Name: id}
+			if p.await(lss.Equal, lss.Separator) {
+				p.next()
+				p.pass(lss.Separator)
+				expr := &exprBuilder{tgt: &p.target, marker: p}
+				expr.fwd = append(expr.fwd, func() {
+					for i, x := range expr.fwd {
+						if i > 0 {
+							x()
+						}
+					}
+				})
+				p.expression(expr)
+				c.Expr = expr.final()
+				fwd = append(fwd, expr.fwd[0])
+			} else if p.is(lss.Ident) { //ATOM
+				c.Expr = &ir.AtomExpr{Value: id}
+				p.next()
+			} else {
+				p.mark("delimiter or = expected")
+			}
+			p.target.c(c)
+		} else {
+			break
+		}
+	}
+	for _, f := range fwd {
+		f()
+	}
 }
 
 func (p *pr) varDecl() {
@@ -97,7 +136,13 @@ func (p *pr) varDecl() {
 func (p *pr) rulesDecl() {
 	assert.For(p.sym.Code == lss.Process, 20, "PROCESS block expected")
 	p.next()
-	for p.await(lss.Ident, lss.Separator, lss.Delimiter) {
+	for stop := false; !stop; {
+		p.pass(lss.Delimiter, lss.Separator)
+		expr := &exprBuilder{tgt: &p.target, marker: p}
+		p.expression(expr)
+		p.expect(lss.ArrowRight, "assign expected", lss.Delimiter, lss.Separator)
+		p.next()
+		p.pass(lss.Delimiter, lss.Separator)
 		id := p.ident()
 		var fid string
 		p.next()
@@ -115,15 +160,9 @@ func (p *pr) rulesDecl() {
 			id = p.target.unit.Name
 		}
 		assert.For(fid != "", 40)
-		if p.await(lss.Becomes, lss.Separator, lss.Delimiter) {
-			p.next()
-			p.pass(lss.Delimiter, lss.Separator)
-			expr := &exprBuilder{tgt: &p.target, marker: p}
-			p.expression(expr)
-			p.target.assign(id, fid, expr)
-		} else {
-			p.mark("assignment expected")
-		}
+		p.target.assign(id, fid, expr)
+		p.pass(lss.Separator, lss.Delimiter)
+		stop = p.is(lss.End)
 	}
 }
 
@@ -144,6 +183,9 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 	p.expect(lss.Ident, "unit name expected", lss.Separator)
 	p.target.init(p.ident())
 	p.next()
+	for p.await(lss.Const, lss.Separator, lss.Delimiter) {
+		p.constDecl()
+	}
 	for p.await(lss.Var, lss.Separator, lss.Delimiter) || p.is(lss.Reg) {
 		p.varDecl()
 	}
@@ -160,7 +202,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 
 func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
-	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg)
+	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False)
 	ret.sc = sc
 	ret._resolve = r
 	ret.init()

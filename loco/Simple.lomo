@@ -1,13 +1,8 @@
-UNIT Fly
-	VAR a-, b INTEGER
-PROCESS
-	b := a
-END Fly
-
 UNIT Top
-	VAR f Fly
-	REG z INTEGER
+	CONST
+		a = TRUE
+		b = FALSE
+	REG x BOOLEAN
 PROCESS
-	z := z + 1
-	f.a := z
+	b | x ? a & b : a | b -> x
 END Top

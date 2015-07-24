@@ -71,6 +71,7 @@ const (
 	Var
 	Process
 	Reg
+	Const
 
 	Eof
 )
@@ -107,7 +108,8 @@ func init() {
 		"TRUE":    True,
 		"FALSE":   False,
 		"NULL":    Null,
-		"INF":     Inf}
+		"INF":     Inf,
+		"CONST":   Const}
 }
 
 func (s Symbol) String() (ret string) {

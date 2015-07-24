@@ -173,7 +173,7 @@ func (p *common) factor(b *exprBuilder) {
 	case p.is(lss.Ident):
 		id := p.ident()
 		var fid string
-		var s *ir.SelectExpr
+		var s ir.Expression
 		p.next()
 		if p.is(lss.Period) {
 			if u := b.tgt.unit.Variables[id]; u != nil {
@@ -192,14 +192,31 @@ func (p *common) factor(b *exprBuilder) {
 		} else {
 			fid = id
 			id = b.tgt.unit.Name
-			if v := b.tgt.unit.Variables[fid]; v != nil {
+			m := b.marker.FutureMark()
+			if c := b.tgt.unit.Const[fid]; c != nil {
+				s = &ir.NamedConstExpr{Named: c}
+			} else if c == nil && b.forward(func() { //forward constant case
+				if c := b.tgt.unit.Const[fid]; c != nil {
+					s.(*ir.NamedConstExpr).Named = c
+				} else {
+					m.Mark("identifier `" + fid + "` not found")
+				}
+			}) {
+				s = &ir.NamedConstExpr{}
+			} else if v := b.tgt.unit.Variables[fid]; v != nil {
 				s = &ir.SelectExpr{Var: v}
 			} else {
-				p.mark("variable not found")
+				p.mark("identifier `" + fid + "` not found")
 			}
 		}
 		assert.For(s != nil, 60)
 		b.push(s)
+	case p.is(lss.True) || p.is(lss.False):
+		val := &ir.ConstExpr{}
+		val.Type = types.BOOLEAN
+		val.Value = (p.sym.Code == lss.True)
+		b.push(val)
+		p.next()
 	case p.is(lss.Colon):
 		//skip for the parents
 	default:
@@ -216,7 +233,21 @@ func (p *common) power(b *exprBuilder) {
 }
 
 func (p *common) product(b *exprBuilder) {
+	p.pass(lss.Separator)
 	p.power(b)
+	for stop := false; !stop; {
+		p.pass(lss.Separator)
+		switch op := p.sym.Code; op {
+		case lss.Times, lss.Div, lss.Mod, lss.Divide, lss.And:
+			p.next()
+			p.pass(lss.Separator)
+			p.power(b)
+			p.product(b)
+			b.push(&ir.Dyadic{Op: ops.Map(op)})
+		default:
+			stop = true
+		}
+	}
 }
 
 func (p *common) quantum(b *exprBuilder) {
@@ -265,7 +296,7 @@ func (p *common) expression(b *exprBuilder) {
 		p.next()
 		p.pass(lss.Separator, lss.Delimiter)
 		p.expression(b)
-		p.expect(lss.Square, "expected `::` symbol", lss.Separator, lss.Delimiter)
+		p.expect(lss.Colon, "expected `:` symbol", lss.Separator, lss.Delimiter)
 		p.next()
 		p.pass(lss.Separator, lss.Delimiter)
 		p.expression(b)

@@ -42,3 +42,15 @@ type Ternary struct {
 }
 
 func (t *Ternary) Print() string { return "ternary op" }
+
+type AtomExpr struct {
+	Value string
+}
+
+func (a *AtomExpr) Print() string { return "atom expr" }
+
+type NamedConstExpr struct {
+	Named *Const
+}
+
+func (n *NamedConstExpr) Print() string { return "named const expr" }
