@@ -39,6 +39,8 @@ func (m *mem) defaults(v *ir.Variable) (ret *value) {
 		ret = &value{typ: t, val: false}
 	case types.TRILEAN:
 		ret = &value{typ: t, val: tri.NIL}
+	case types.REAL:
+		ret = &value{typ: t, val: NewRat(0)}
 	default:
 		halt.As(100, t)
 	}

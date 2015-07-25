@@ -1,5 +1,103 @@
+UNIT Atoms
+	CONST A; B; C
+	VAR a, b, c, d ATOM
+	VAR ok0, ok1, ok3 BOOLEAN
+PROCESS
+	A -> a
+	B -> b
+	UNDEF -> c
+	(a = b) & (a # b) & (a # C) -> ok0
+	(c = UNDEF) & (UNDEF # c)  -> ok1
+	b -> d
+	(a = d) -> ok3
+END Atoms
+
+UNIT Strings
+	CONST
+		hello = "Hello"
+		world = "World"
+	VAR
+		s0, s1, s2, s3 STRING
+		t0, t1, t2, t3 STRING
+		ok0, ok1 BOOLEAN
+		a Atoms
+PROCESS
+	hello + ", "+ world + `!` -> s0
+	s0 -> t0
+	~(t0 # s0) & (t0 = s0) -> ok0
+
+	`?` + "DLROW" + ` ` +  "`" + "OLLEH" -> s1
+	"" + '!' -> t1
+	"~" -> t2
+	"abba" -> s2
+	"baab" -> t3
+	(s2 > t3) | (s2 >= t3) & (t3 < s2) | (t3 <= s2) -> ok1
+	'1' + '4' + hello -> s3
+END Strings
+
+UNIT Chars
+	CONST
+		cr = 0DU
+		lf = 0AU
+		space = ' '
+		tab = 09U
+	VAR
+		x, x0, x1 CHAR
+		y CHAR
+		ok0,  ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10 BOOLEAN
+	REG p, q TRILEAN
+	VAR str Strings
+PROCESS
+	'$' -> x
+	0DU -> x0
+	space -> x1
+	0DU -> y
+	(x = '$') -> ok0
+	(x1 = space) & (y = cr) -> ok1
+	(x1 = space) # (y = cr) -> ok2
+	(x1 # space) = (y # cr) -> ok3
+	(y > cr) | (y >= cr) & (x0 < lf) | (x0 <=lf) -> ok4
+	(p = q) & (p # q) -> ok5
+	(TRUE = FALSE) -> ok6
+	(NULL = FALSE) -> ok7
+	(NULL # TRUE) -> ok8
+	(TRUE # NULL) -> ok9
+	(TRUE = NULL) -> ok10
+END Chars
+
+UNIT Pow
+	REG i INTEGER
+	REG j INTEGER
+	REG s, t INTEGER
+	REG p, q, z, w REAL
+	VAR ch Chars
+PROCESS
+	2 ^ 2 * 2 -> i
+	10 + i ^ (i + 3) // 2 // 3 // 4 // 5 // 6 // 7 -> j
+	s*s + t*t - s+t^i - s^j + s*i -> s
+	9/27 -> p
+	2/1 -> q
+	p ^ q -> z
+	9 ^ q -> w
+END Pow
+
+UNIT Comp
+VAR
+	i, j INTEGER
+	ok0, ok1, ok2, ok3 BOOLEAN
+	p Pow
+PROCESS
+	4 -> i
+	(i + 9) % 2 -> j
+	i < 4 -> ok0
+	i > 4 -> ok1
+	((i + 4) >= (j+ 49)) & (i <= 144) -> ok2
+	ok2 & (i # j) | (i = j) -> ok3
+END Comp
+
 UNIT Logic
-	REG a, b, c BOOLEAN; p, q, r TRILEAN
+	REG a, b, c BOOLEAN; p, q, r TRILEAN;
+	VAR comp Comp
 PROCESS
 	TRUE -> a
 	FALSE -> b
@@ -9,12 +107,57 @@ PROCESS
 	r = NULL ? p & ~q | r | TRUE : NULL  -> r
 END Logic
 
+UNIT Big
+	CONST max = 232351311000000000000013132342342354235235234234234234234111111324235235234234
+	VAR i INTEGER
+PROCESS
+	max + max + max -> i
+END Big
+
+UNIT Complex
+	CONST
+		i = !1
+		iE = !2.71
+		re = 14
+		im = 34
+		cmp = re +! im
+		cmp2 = 14 -!44
+	VAR x COMPLEX
+PROCESS
+	cmp + cmp2 + i -> x
+END Complex
+
+UNIT Reals
+	CONST
+		Pi = 3.14
+		E = 2.71
+	VAR
+		r, r0, p, s, s0, t, t0, s1, s2, s3 REAL
+		i, j INTEGER
+		ok0, ok1 BOOLEAN
+PROCESS
+	0.1 -> r
+	Pi -> p
+	 -r -> r0
+	E -> s
+	Pi / (E + 1.0) -> t
+	45 -> i
+	443 -> j
+	i/j -> s0
+	i/s -> t0
+	j/t -> s1
+	s*s + t*t - s + t^i - s^j + s*i + s + i + s / i + s - i -> s2
+	s / i + s * i -> s3
+	(s > t) | (s >= t) & (s < t) | (s <= t) -> ok0
+	(s = t) & (s # t) -> ok1
+END Reals
+
 UNIT Arithmetics
 	CONST
 		a = 42
 		b = 1945
 		c = 100500
-	VAR x INTEGER; l Logic
+	VAR x INTEGER; big Big; l Logic; re Reals; im Complex
 PROCESS
 	(a * b + 2 * a * c - c % a + (a + b + c) ^ 2) // 2 -> x
 END Arithmetics

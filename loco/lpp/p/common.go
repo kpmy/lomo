@@ -8,6 +8,7 @@ import (
 	"lomo/ir/ops"
 	"lomo/ir/types"
 	"lomo/loco/lss"
+	"strconv"
 )
 
 type mark struct {
@@ -140,7 +141,7 @@ func (p *common) number() (t types.Type, v interface{}) {
 	switch p.sym.NumberOpts.Modifier {
 	case "":
 		if p.sym.NumberOpts.Period {
-			//	t, v = types.REAL, p.sym.Str
+			t, v = types.REAL, p.sym.Str
 		} else {
 			//x, err := strconv.Atoi(p.sym.Str)
 			//assert.For(err == nil, 40)
@@ -151,12 +152,12 @@ func (p *common) number() (t types.Type, v interface{}) {
 			p.mark("hex integer value expected")
 		}
 		//fmt.Println(p.sym)
-		//		if r, err := strconv.ParseUint(p.sym.Str, 16, 64); err == nil {
-		//	t = types.CHAR
-		//	v = rune(r)
-		//		} else {
-		//			p.mark("error while reading integer")
-		//		}
+		if r, err := strconv.ParseUint(p.sym.Str, 16, 64); err == nil {
+			t = types.CHAR
+			v = rune(r)
+		} else {
+			p.mark("error while reading integer")
+		}
 	default:
 		p.mark("unknown number format `", p.sym.NumberOpts.Modifier, "`")
 	}
@@ -165,11 +166,34 @@ func (p *common) number() (t types.Type, v interface{}) {
 
 func (p *common) factor(b *exprBuilder) {
 	switch p.sym.Code {
+	case lss.String:
+		val := &ir.ConstExpr{}
+		if len(p.sym.Str) == 1 && p.sym.StringOpts.Apos { //do it symbol
+			val.Type = types.CHAR
+			val.Value = rune(p.sym.Str[0])
+			b.push(val)
+			p.next()
+		} else { //do string later
+			val.Type = types.STRING
+			val.Value = p.sym.Str
+			b.push(val)
+			p.next()
+		}
 	case lss.Number:
 		t, v := p.number()
 		e := &ir.ConstExpr{Type: t, Value: v}
 		b.push(e)
 		p.next()
+	case lss.Undef:
+		val := &ir.ConstExpr{}
+		val.Type = types.ANY
+		b.push(val)
+		p.next()
+	case lss.Im:
+		p.next()
+		p.factor(b)
+		p.pass(lss.Separator)
+		b.push(&ir.Monadic{Op: ops.Im})
 	case lss.Ident:
 		id := p.ident()
 		var fid string
@@ -195,6 +219,8 @@ func (p *common) factor(b *exprBuilder) {
 			m := b.marker.FutureMark()
 			if c := b.tgt.unit.Const[fid]; c != nil {
 				s = &ir.NamedConstExpr{Named: c}
+			} else if v := b.tgt.unit.Variables[fid]; v != nil {
+				s = &ir.SelectExpr{Var: v}
 			} else if c == nil && b.forward(func() { //forward constant case
 				if c := b.tgt.unit.Const[fid]; c != nil {
 					s.(*ir.NamedConstExpr).Named = c
@@ -203,8 +229,6 @@ func (p *common) factor(b *exprBuilder) {
 				}
 			}) {
 				s = &ir.NamedConstExpr{}
-			} else if v := b.tgt.unit.Variables[fid]; v != nil {
-				s = &ir.SelectExpr{Var: v}
 			} else {
 				p.mark("identifier `" + fid + "` not found")
 			}
@@ -253,6 +277,19 @@ func (p *common) factor(b *exprBuilder) {
 
 func (p *common) cpx(b *exprBuilder) {
 	p.factor(b)
+	p.pass(lss.Separator)
+	switch op := p.sym.Code; op {
+	case lss.Ncmp, lss.Pcmp:
+		p.next()
+		p.pass(lss.Separator)
+		if p.sym.Code != lss.Im {
+			p.factor(b)
+		} else {
+			p.mark("imaginary operator not expected")
+		}
+		b.push(&ir.Dyadic{Op: ops.Map(op)})
+
+	}
 }
 
 func (p *common) power(b *exprBuilder) {

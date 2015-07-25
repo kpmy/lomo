@@ -9,6 +9,7 @@ import (
 	"lomo/ir/mods"
 	"lomo/ir/ops"
 	"lomo/ir/types"
+	"math/big"
 	"reflect"
 	"sync"
 )
@@ -64,6 +65,8 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 			}
 		case *ir.ConstExpr:
 			stack.push(cval(e))
+		case *ir.AtomExpr:
+			stack.push(&value{typ: types.ATOM, val: Atom(e.Value)})
 		case *ir.SelectExpr:
 			e.Var = u.code.Variables[e.Var.Name]
 			var o object
@@ -85,6 +88,10 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 					i := v.toInt()
 					i = i.Neg(i)
 					v = &value{typ: v.typ, val: ThisInt(i)}
+				case types.REAL:
+					i := v.toReal()
+					i = i.Neg(i)
+					stack.push(&value{typ: v.typ, val: ThisRat(i)})
 				default:
 					halt.As(100, v.typ)
 				}
@@ -103,6 +110,27 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 				ctx.push(&value{typ: v.typ, val: ns})*/
 				default:
 					halt.As(100, "unexpected logical type")
+				}
+			case ops.Im:
+				switch v.typ {
+				case types.INTEGER:
+					i := v.toInt()
+					im := big.NewRat(0, 1)
+					im.SetInt(i)
+					re := big.NewRat(0, 1)
+					c := &Cmp{}
+					c.re = re
+					c.im = im
+					v = &value{typ: types.COMPLEX, val: c}
+				case types.REAL:
+					im := v.toReal()
+					re := big.NewRat(0, 1)
+					c := &Cmp{}
+					c.re = re
+					c.im = im
+					v = &value{typ: types.COMPLEX, val: c}
+				default:
+					halt.As(100, "unexpected operand type ", v.typ)
 				}
 			default:
 				halt.As(100, e.Op)
@@ -187,6 +215,7 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 	switch r := _r.(type) {
 	case *ir.AssignRule:
 		expr(r.Expr)
+		log.Println("for ", o.schema().Name)
 		set(o, stack.pop())
 	default:
 		halt.As(100, reflect.TypeOf(r))

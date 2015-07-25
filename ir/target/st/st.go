@@ -2,6 +2,7 @@ package st
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/xml"
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
@@ -13,7 +14,11 @@ import (
 	"lomo/ir/target"
 	"lomo/ir/types"
 	"reflect"
+	"strconv"
+	"strings"
 )
+
+const prefix = "base64:"
 
 //dynamic xml marshaller
 type extern struct {
@@ -48,7 +53,11 @@ func (u *extern) attr(start *xml.StartElement, name string, value interface{}) {
 func (u *extern) data(t types.Type, _x interface{}) (ret xml.CharData) {
 	switch x := _x.(type) {
 	case string:
-		ret = xml.CharData(x)
+		if t == types.STRING {
+			ret = xml.CharData(base64.StdEncoding.EncodeToString([]byte(prefix + x)))
+		} else {
+			ret = xml.CharData(x)
+		}
 	case bool:
 		if x {
 			ret = xml.CharData("true")
@@ -57,6 +66,8 @@ func (u *extern) data(t types.Type, _x interface{}) (ret xml.CharData) {
 		}
 	case nil:
 		ret = xml.CharData("null")
+	case int32:
+		ret = xml.CharData(strconv.FormatUint(uint64(x), 16))
 	default:
 		halt.As(100, reflect.TypeOf(x))
 	}
@@ -151,6 +162,11 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		e.EncodeToken(start)
 		e.EncodeToken(u.data(x.Type, x.Value))
 		e.EncodeToken(start.End())
+	case *ir.AtomExpr:
+		start.Name.Local = "atom-expression"
+		u.attr(&start, "value", x.Value)
+		e.EncodeToken(start)
+		e.EncodeToken(start.End())
 	case *ir.NamedConstExpr:
 		start.Name.Local = "named-constant-expression"
 		u.attr(&start, "name", x.Named.Name)
@@ -213,6 +229,7 @@ type intern struct {
 	root    *ir.Unit
 	x       interface{}
 	consume func(interface{})
+	stop    bool
 }
 
 type futureForeignType struct {
@@ -243,7 +260,7 @@ func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 }
 func (i *intern) data(t types.Type, cd xml.CharData) (ret interface{}) {
 	switch t {
-	case types.INTEGER:
+	case types.INTEGER, types.REAL:
 		ret = string(cd)
 	case types.BOOLEAN:
 		ret = string(cd) == "true"
@@ -255,6 +272,16 @@ func (i *intern) data(t types.Type, cd xml.CharData) (ret interface{}) {
 		} else {
 			ret = tri.FALSE
 		}
+	case types.CHAR:
+		c, _ := strconv.ParseUint(string(cd), 16, 64)
+		ret = rune(c)
+	case types.STRING:
+		data, err := base64.StdEncoding.DecodeString(string(cd))
+		assert.For(err == nil, 30)
+		ret = strings.TrimPrefix(string(data), prefix)
+	case types.ANY:
+		assert.For(string(cd) == "null", 20)
+		ret = nil
 	default:
 		halt.As(100, t)
 	}
@@ -388,11 +415,20 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		c.Named = &ir.Const{Name: i.attr(&start, "name").(string)}
 		i.x = c
 		i.consume(c)
+	case "atom-expression":
+		a := &ir.AtomExpr{}
+		a.Value = i.attr(&start, "value").(string)
+		i.x = a
+		i.consume(a)
 	case "constant-expression":
 		c := &ir.ConstExpr{}
 		c.Type = types.TypMap[i.attr(&start, "type").(string)]
 		sd, _ := d.Token()
-		c.Value = i.data(c.Type, sd.(xml.CharData))
+		if td, ok := sd.(xml.CharData); ok {
+			c.Value = i.data(c.Type, td)
+		} else {
+			halt.As(100)
+		}
 		i.consume(c)
 		i.x = c
 	case "selector-expression":

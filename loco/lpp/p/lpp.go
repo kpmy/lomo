@@ -65,7 +65,7 @@ func (p *pr) constDecl() {
 				p.expression(expr)
 				c.Expr = expr.final()
 				fwd = append(fwd, expr.fwd[0])
-			} else if p.is(lss.Ident) { //ATOM
+			} else if p.is(lss.Delimiter) { //ATOM
 				c.Expr = &ir.AtomExpr{Value: id}
 				p.next()
 			} else {
@@ -202,7 +202,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 
 func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
-	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False, lss.Null)
+	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False, lss.Null, lss.Undef)
 	ret.sc = sc
 	ret._resolve = r
 	ret.init()

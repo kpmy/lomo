@@ -12,6 +12,11 @@ const (
 	BOOLEAN
 	TRILEAN
 	ATOM
+	REAL
+	CHAR
+	STRING
+	ANY
+	COMPLEX
 
 	none
 )
@@ -28,6 +33,16 @@ func (t Type) String() string {
 		return "TRILEAN"
 	case ATOM:
 		return "ATOM"
+	case REAL:
+		return "REAL"
+	case CHAR:
+		return "CHAR"
+	case STRING:
+		return "STRING"
+	case ANY:
+		return "ANY"
+	case COMPLEX:
+		return "COMPLEX"
 	default:
 		return strconv.Itoa(int(t))
 	}

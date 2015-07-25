@@ -1,6 +1,7 @@
 package loom
 
 import (
+	"fmt"
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
@@ -69,7 +70,6 @@ func i_i_i_(fn func(*big.Int, *big.Int) *big.Int) func(*big.Int, *value) *big.In
 	}
 }
 
-/*
 func r_(fn func(*value, *value) *big.Rat) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.REAL}
@@ -126,6 +126,7 @@ func r_ir_ir_(fn func(*big.Rat, *big.Rat) *big.Rat) func(*big.Rat, *value) *big.
 	}
 }
 
+/*
 func set_(fn func(*value, *value) *Set) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.SET}
@@ -147,7 +148,7 @@ func set_set_set_(fn func(*Set, *Set) *Set) func(*Set, *value) *Set {
 		return fn(lc, rc)
 	}
 }
-
+*/
 func c_(fn func(*value, *value) *Cmp) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.COMPLEX}
@@ -203,7 +204,7 @@ func c_ir_ir_(fn func(*big.Rat, *big.Rat) *Cmp) func(*big.Rat, *value) *Cmp {
 		panic(0)
 	}
 }
-*/
+
 func b_(fn func(*value, *value) bool) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.BOOLEAN}
@@ -226,7 +227,6 @@ func b_i_i_(fn func(*big.Int, *big.Int) bool) func(*big.Int, *value) bool {
 	}
 }
 
-/*
 func b_z_(fn func(*Any, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		la := l.toAny()
@@ -255,6 +255,7 @@ func b_t_z_(fn func(tri.Trit, *Any) bool) func(tri.Trit, *value) bool {
 	}
 }
 
+/*
 func b_proc_(fn func(*Proc, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		la := l.toProc()
@@ -282,7 +283,7 @@ func b_proc_z_(fn func(*Proc, *Any) bool) func(*Proc, *value) bool {
 		return fn(lt, ra)
 	}
 }
-
+*/
 func b_r_(fn func(*big.Rat, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		lr := l.toReal()
@@ -310,7 +311,7 @@ func b_c_c_(fn func(rune, rune) bool) func(rune, *value) bool {
 		return fn(lc, rc)
 	}
 }
-*/
+
 func b_b_(fn func(bool, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		lb := l.toBool()
@@ -353,7 +354,6 @@ func b_a_a_(fn func(Atom, Atom) bool) func(Atom, *value) bool {
 	}
 }
 
-/*
 func b_a_z_(fn func(Atom, *Any) bool) func(Atom, *value) bool {
 	return func(la Atom, r *value) bool {
 		rt := r.toAny()
@@ -367,7 +367,7 @@ func b_z_a_(fn func(*Any, Atom) bool) func(*Any, *value) bool {
 		return fn(lt, ra)
 	}
 }
-*/
+
 func b_t_b_(fn func(tri.Trit, bool) bool) func(tri.Trit, *value) bool {
 	return func(lt tri.Trit, r *value) bool {
 		rb := r.toBool()
@@ -382,7 +382,6 @@ func b_b_t_(fn func(bool, tri.Trit) bool) func(bool, *value) bool {
 	}
 }
 
-/*
 func s_(fn func(*value, *value) string) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.STRING}
@@ -447,6 +446,7 @@ func b_s_s_(fn func(string, string) bool) func(string, *value) bool {
 	}
 }
 
+/*
 func b_set_(fn func(*Set, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		ls := l.toSet()
@@ -511,7 +511,8 @@ func dyINTEGER() {
 		}))))
 	putDyadic(types.INTEGER, types.INTEGER, ops.Pow,
 		i_(i_i_(i_i_i_(func(l *big.Int, r *big.Int) *big.Int {
-			assert.For(r.Cmp(big.NewInt(0)) >= 0, 40, "nonnegative only")
+			fmt.Println("to do full functional power")
+			assert.For(r.Cmp(big.NewInt(0)) >= eq, 40, "nonnegative only", r)
 			return l.Exp(l, r, big.NewInt(0))
 		}))))
 
@@ -547,7 +548,6 @@ func dyINTEGER() {
 		}))))
 }
 
-/*
 func dyREAL() {
 	putDyadic(types.REAL, types.REAL, ops.Sum,
 		r_(r_r_(r_r_r_(func(l *big.Rat, r *big.Rat) *big.Rat {
@@ -738,7 +738,7 @@ func dyCHAR2STRING() {
 		return string(buf)
 	}))))
 }
-*/
+
 func dyABT() {
 	putDyadic(types.BOOLEAN, types.BOOLEAN, ops.Neq, b_(b_b_(b_b_b_(func(lb bool, rb bool) bool { return lb != rb }))))
 	putDyadic(types.BOOLEAN, types.BOOLEAN, ops.Eq, b_(b_b_(b_b_b_(func(lb bool, rb bool) bool { return lb == rb }))))
@@ -819,7 +819,6 @@ func dyABT() {
 	}))))
 }
 
-/*
 func dyANY() {
 	putDyadic(types.ANY, types.ANY, ops.Neq, b_(b_z_(b_z_z_(func(la *Any, ra *Any) bool {
 		neq := true
@@ -864,6 +863,7 @@ func dyANY() {
 	}))))
 }
 
+/*
 func dySET() {
 	putDyadic(types.SET, types.SET, ops.Eq, b_(b_set_(b_set_set_(func(ls *Set, rs *Set) bool {
 		s := &Set{}
@@ -955,16 +955,16 @@ func dyPROC() {
 func init() {
 	dyadic = make(tm)
 	dyINTEGER()
-	/*	dyREAL()
-		dyCOMPLEX()
-		dyCHAR()
-		dySTRING()
-		dyINT2REAL()
-		dyREAL2COMPLEX()
-		dyCHAR2STRING()
-	*/dyABT() /*
-		dyANY()
-		dySET()
-		dyPTR()
-		dyPROC() */
+	dyREAL()
+	dyCOMPLEX()
+	dyCHAR()
+	dySTRING()
+	dyINT2REAL()
+	dyREAL2COMPLEX()
+	dyCHAR2STRING()
+	dyABT()
+	dyANY()
+	/*dySET()
+	dyPTR()
+	dyPROC() */
 }

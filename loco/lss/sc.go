@@ -65,6 +65,7 @@ const (
 	True
 	False
 	Null
+	Undef
 
 	Unit
 	End
@@ -109,7 +110,8 @@ func init() {
 		"FALSE":   False,
 		"NULL":    Null,
 		"INF":     Inf,
-		"CONST":   Const}
+		"CONST":   Const,
+		"UNDEF":   Undef}
 }
 
 func (s Symbol) String() (ret string) {

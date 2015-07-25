@@ -33,6 +33,17 @@ func (v *value) toAtom() (ret Atom) {
 	return
 }
 
+func (v *value) toStr() (ret string) {
+	assert.For(v.typ == types.STRING, 20)
+	switch x := v.val.(type) {
+	case string:
+		ret = x
+	default:
+		halt.As(100, "wrong string ", reflect.TypeOf(x))
+	}
+	return
+}
+
 func (v *value) toInt() (ret *big.Int) {
 	assert.For(v.typ == types.INTEGER, 20)
 	switch x := v.val.(type) {
@@ -71,6 +82,51 @@ func (v *value) toTril() (ret tri.Trit) {
 	return
 }
 
+func (v *value) toReal() (ret *big.Rat) {
+	assert.For(v.typ == types.REAL, 20)
+	switch x := v.val.(type) {
+	case *Rat:
+		ret = big.NewRat(0, 1)
+		ret.Add(ret, &x.Rat)
+	default:
+		halt.As(100, "wrong real ", reflect.TypeOf(x))
+	}
+	return
+}
+
+func (v *value) toCmp() (ret *Cmp) {
+	assert.For(v.typ == types.COMPLEX, 20)
+	switch x := v.val.(type) {
+	case *Cmp:
+		ret = ThisCmp(x)
+	default:
+		halt.As(100, "wrong complex ", reflect.TypeOf(x))
+	}
+	return
+}
+
+func (v *value) toRune() (ret rune) {
+	assert.For(v.typ == types.CHAR, 20, v.typ)
+	switch x := v.val.(type) {
+	case rune:
+		ret = x
+	default:
+		halt.As(100, "wrong rune ", reflect.TypeOf(x))
+	}
+	return
+}
+
+func (v *value) toAny() (ret *Any) {
+	assert.For(v.typ == types.ANY, 20)
+	switch x := v.val.(type) {
+	case *Any:
+		ret = ThisAny(&value{typ: x.typ, val: x.x})
+	default:
+		halt.As(100, "wrong any ", reflect.TypeOf(x))
+	}
+	return
+}
+
 func cval(e *ir.ConstExpr) (ret *value) {
 	t := e.Type
 	switch t {
@@ -82,10 +138,34 @@ func cval(e *ir.ConstExpr) (ret *value) {
 		} else {
 			halt.As(100, "wrong integer")
 		}
+	case types.REAL:
+		r := big.NewRat(0, 1)
+		if err := r.UnmarshalText([]byte(e.Value.(string))); err == nil {
+			v := ThisRat(r)
+			ret = &value{typ: t, val: v}
+		} else {
+			halt.As(100, "wrong real")
+		}
 	case types.BOOLEAN:
 		ret = &value{typ: t, val: e.Value.(bool)}
 	case types.TRILEAN:
 		ret = &value{typ: t, val: tri.NIL}
+	case types.CHAR:
+		var v rune
+		switch x := e.Value.(type) {
+		case int32:
+			v = rune(x)
+		case int:
+			v = rune(x)
+		default:
+			halt.As(100, "unsupported rune coding")
+		}
+		ret = &value{typ: t, val: v}
+	case types.STRING:
+		v := e.Value.(string)
+		ret = &value{typ: t, val: v}
+	case types.ANY:
+		ret = &value{typ: t, val: &Any{}}
 	default:
 		halt.As(100, "unknown type ", t, " for ", e)
 	}
