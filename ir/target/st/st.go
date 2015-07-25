@@ -169,19 +169,26 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 		u.attr(&start, "value", x.Value)
 		e.EncodeToken(start)
 		e.EncodeToken(start.End())
-	case *ir.NamedConstExpr:
-		start.Name.Local = "named-constant-expression"
-		u.attr(&start, "name", x.Named.Name)
-		e.EncodeToken(start)
-		e.EncodeToken(start.End())
 	case *ir.SelectExpr:
 		start.Name.Local = "selector-expression"
-		u.attr(&start, "unit", x.Var.Unit.Name)
-		u.attr(&start, "id", x.Var.Name)
-		if x.Foreign != nil {
-			u.attr(&start, "foreign", x.Foreign.Name)
+		if x.Var != nil {
+			u.attr(&start, "unit", x.Var.Unit.Name)
+			u.attr(&start, "variable", x.Var.Name)
+			if x.Foreign != nil {
+				u.attr(&start, "foreign", x.Foreign.Name)
+			}
+		} else if x.Const != nil {
+			u.attr(&start, "unit", x.Const.Unit.Name)
+			u.attr(&start, "constant", x.Const.Name)
+		} else {
+			halt.As(100)
 		}
+		u.attr(&start, "inner", x.Inner.String())
 		e.EncodeToken(start)
+		for _, v := range x.ExprList {
+			n := &extern{x: v}
+			e.Encode(n)
+		}
 		e.EncodeToken(start.End())
 	case *ir.Monadic:
 		start.Name.Local = "monadic-expression"
@@ -412,11 +419,6 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				halt.As(100, reflect.TypeOf(x))
 			}
 		}
-	case "named-constant-expression":
-		c := &ir.NamedConstExpr{}
-		c.Named = &ir.Const{Name: i.attr(&start, "name").(string)}
-		i.x = c
-		i.consume(c)
 	case "atom-expression":
 		a := &ir.AtomExpr{}
 		a.Value = i.attr(&start, "value").(string)
@@ -436,9 +438,24 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "selector-expression":
 		c := &ir.SelectExpr{}
 		if un := i.attr(&start, "unit").(string); un == i.root.Name {
-			c.Var = &ir.Variable{Name: i.attr(&start, "id").(string)}
-			if foreign, ok := i.attr(&start, "foreign").(string); ok {
-				c.Foreign = &ir.Variable{Name: foreign}
+			if vn := i.attr(&start, "variable"); vn != nil {
+				c.Var = &ir.Variable{Name: vn.(string)}
+				if foreign, ok := i.attr(&start, "foreign").(string); ok {
+					c.Foreign = &ir.Variable{Name: foreign}
+				}
+			} else if cn := i.attr(&start, "constant"); cn != nil {
+				c.Const = &ir.Const{Name: cn.(string)}
+			} else {
+				halt.As(100)
+			}
+			c.Inner = mods.ModMap[i.attr(&start, "inner").(string)]
+			consumer = func(_x interface{}) {
+				switch x := _x.(type) {
+				case ir.Expression:
+					c.ExprList = append(c.ExprList, x)
+				default:
+					halt.As(100, reflect.TypeOf(x))
+				}
 			}
 		} else {
 			halt.As(100, un)

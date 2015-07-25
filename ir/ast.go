@@ -59,6 +59,7 @@ type Variable struct {
 }
 
 type Const struct {
+	Unit     *Unit
 	Name     string
 	Expr     Expression
 	Modifier mods.Modifier

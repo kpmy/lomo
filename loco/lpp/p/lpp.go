@@ -50,7 +50,7 @@ func (p *pr) constDecl() {
 		if p.await(lss.Ident, lss.Separator, lss.Delimiter) {
 			id := p.ident()
 			p.next()
-			c := &ir.Const{Name: id}
+			c := &ir.Const{Unit: p.target.unit, Name: id}
 			if p.await(lss.Equal, lss.Separator) {
 				p.next()
 				p.pass(lss.Separator)

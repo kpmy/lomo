@@ -29,7 +29,7 @@ func (b *exprBuilder) push(_e ir.Expression) {
 	switch e := _e.(type) {
 	case *exprBuilder:
 		b.stack.PushFront(e.final())
-	case *ir.ConstExpr, *ir.SelectExpr, *ir.NamedConstExpr:
+	case *ir.ConstExpr, *ir.SelectExpr:
 		b.stack.PushFront(e)
 	case *ir.Monadic:
 		e.Expr = b.pop()
@@ -77,6 +77,7 @@ func (b *exprBuilder) final() (ret ir.Expression) {
 type selectBuilder struct {
 	tgt    *target
 	marker Marker
+	inner  *ir.SelectExpr
 }
 
 func (b *selectBuilder) foreign(unit, id string) (sel *ir.SelectExpr) {
@@ -91,6 +92,27 @@ func (b *selectBuilder) foreign(unit, id string) (sel *ir.SelectExpr) {
 		}
 	} else {
 		b.marker.Mark("foreign `", unit, "` not resolved")
+	}
+	return
+}
+
+func (b *selectBuilder) list(el []ir.Expression) {
+	b.inner = &ir.SelectExpr{}
+	b.inner.Inner = mods.LIST
+	b.inner.ExprList = el
+}
+
+func (b *selectBuilder) upto(e ...ir.Expression) {
+	b.inner = &ir.SelectExpr{}
+	b.inner.Inner = mods.RANGE
+	b.inner.ExprList = append(b.inner.ExprList, e...)
+}
+
+func (b *selectBuilder) merge(s *ir.SelectExpr) (sel *ir.SelectExpr) {
+	sel = s
+	if b.inner != nil {
+		sel.Inner = b.inner.Inner
+		sel.ExprList = b.inner.ExprList
 	}
 	return
 }

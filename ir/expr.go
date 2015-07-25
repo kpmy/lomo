@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"lomo/ir/mods"
 	"lomo/ir/ops"
 	"lomo/ir/types"
 )
@@ -17,8 +18,11 @@ type ConstExpr struct {
 func (c *ConstExpr) Print() string { return "const expr" }
 
 type SelectExpr struct {
-	Var     *Variable
-	Foreign *Variable
+	Const    *Const
+	Var      *Variable
+	Foreign  *Variable
+	Inner    mods.Modifier
+	ExprList []Expression
 }
 
 func (s *SelectExpr) Print() string { return "select expr" }
@@ -48,9 +52,3 @@ type AtomExpr struct {
 }
 
 func (a *AtomExpr) Print() string { return "atom expr" }
-
-type NamedConstExpr struct {
-	Named *Const
-}
-
-func (n *NamedConstExpr) Print() string { return "named const expr" }

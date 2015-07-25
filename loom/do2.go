@@ -57,27 +57,42 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 	var expr func(ir.Expression)
 	expr = func(_e ir.Expression) {
 		switch e := _e.(type) {
-		case *ir.NamedConstExpr:
-			if c := u.code.Const[e.Named.Name]; c != nil {
-				expr(c.Expr)
-			} else {
-				halt.As(100, "wrong constant name", e.Named.Name)
-			}
 		case *ir.ConstExpr:
 			stack.push(cval(e))
 		case *ir.AtomExpr:
 			stack.push(&value{typ: types.ATOM, val: Atom(e.Value)})
 		case *ir.SelectExpr:
-			e.Var = u.code.Variables[e.Var.Name]
-			var o object
-			if e.Foreign == nil {
-				o = u.objects[e.Var.Name]
+			if e.Var != nil {
+				e.Var = u.code.Variables[e.Var.Name]
+				var o object
+				if e.Foreign == nil {
+					o = u.objects[e.Var.Name]
+				} else {
+					if imp := u.imps[imp(e.Var)]; imp != nil {
+						o = imp.objects[e.Foreign.Name]
+					}
+				}
+				stack.push(o.get())
+			} else if e.Const != nil {
+				if c := u.code.Const[e.Const.Name]; c != nil {
+					expr(c.Expr)
+				} else {
+					halt.As(100, "wrong constant name", e.Const.Name)
+				}
 			} else {
-				if imp := u.imps[imp(e.Var)]; imp != nil {
-					o = imp.objects[e.Foreign.Name]
+				halt.As(100)
+			}
+			base := stack.pop()
+			if e.Inner != mods.NONE {
+				switch {
+				case e.Inner == mods.LIST && len(e.ExprList) == 1: //single item
+				case e.Inner == mods.LIST && len(e.ExprList) > 1: //some items
+				case e.Inner == mods.RANGE && len(e.ExprList) == 2: //range min (from, to) .. max(from, to) with reverse
+				case e.Inner == mods.RANGE && len(e.ExprList) == 1: //open range from `from` to the end of smth
+				default:
+					halt.As(100, "unexpected selector ", base)
 				}
 			}
-			stack.push(o.get())
 		case *ir.Monadic:
 			expr(e.Expr)
 			v := stack.pop()

@@ -164,6 +164,39 @@ func (p *common) number() (t types.Type, v interface{}) {
 	return
 }
 
+func (p *common) inside(b *selectBuilder) {
+	if p.await(lss.Lbrak, lss.Separator, lss.Delimiter) {
+		p.next()
+		up := &exprBuilder{tgt: b.tgt, marker: b.marker}
+		p.expression(up)
+		if p.await(lss.Rbrak, lss.Separator) { // single index
+			p.done = true
+			b.list([]ir.Expression{up.final()})
+		} else if p.is(lss.UpTo) {
+			p.next()
+			if p.await(lss.Rbrak, lss.Delimiter, lss.Separator) {
+				p.done = true
+				b.upto(up.final())
+			} else {
+				to := &exprBuilder{tgt: b.tgt, marker: b.marker}
+				p.expression(to)
+				b.upto(up.final(), to.final())
+			}
+		} else if p.is(lss.Comma) {
+			el := []ir.Expression{up.final()}
+			for p.await(lss.Comma, lss.Separator, lss.Delimiter) {
+				p.next()
+				e := &exprBuilder{tgt: b.tgt, marker: b.marker}
+				p.expression(e)
+				el = append(el, e.final())
+			}
+			b.list(el)
+		}
+		p.expect(lss.Rbrak, "] expected", lss.Separator, lss.Delimiter)
+		p.next()
+	}
+}
+
 func (p *common) factor(b *exprBuilder) {
 	switch p.sym.Code {
 	case lss.String:
@@ -197,7 +230,8 @@ func (p *common) factor(b *exprBuilder) {
 	case lss.Ident:
 		id := p.ident()
 		var fid string
-		var s ir.Expression
+		var s *ir.SelectExpr
+		sb := &selectBuilder{tgt: b.tgt, marker: p}
 		p.next()
 		if p.is(lss.Period) {
 			if u := b.tgt.unit.Variables[id]; u != nil {
@@ -208,7 +242,6 @@ func (p *common) factor(b *exprBuilder) {
 				p.expect(lss.Ident, "foreign variable expected")
 				fid = p.ident()
 				p.next()
-				sb := &selectBuilder{tgt: b.tgt, marker: p}
 				s = sb.foreign(id, fid)
 			} else {
 				p.mark("variable not found")
@@ -218,23 +251,24 @@ func (p *common) factor(b *exprBuilder) {
 			id = b.tgt.unit.Name
 			m := b.marker.FutureMark()
 			if c := b.tgt.unit.Const[fid]; c != nil {
-				s = &ir.NamedConstExpr{Named: c}
+				s = &ir.SelectExpr{Const: c}
 			} else if v := b.tgt.unit.Variables[fid]; v != nil {
 				s = &ir.SelectExpr{Var: v}
 			} else if c == nil && b.forward(func() { //forward constant case
 				if c := b.tgt.unit.Const[fid]; c != nil {
-					s.(*ir.NamedConstExpr).Named = c
+					s.Const = c
 				} else {
 					m.Mark("identifier `" + fid + "` not found")
 				}
 			}) {
-				s = &ir.NamedConstExpr{}
+				s = &ir.SelectExpr{}
 			} else {
 				p.mark("identifier `" + fid + "` not found")
 			}
 		}
 		assert.For(s != nil, 60)
-		b.push(s)
+		p.inside(sb)
+		b.push(sb.merge(s))
 	case lss.True, lss.False:
 		val := &ir.ConstExpr{}
 		val.Type = types.BOOLEAN
