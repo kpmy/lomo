@@ -6,7 +6,7 @@ import (
 	"log"
 	"lomo/ir"
 	"lomo/ir/target"
-	_ "lomo/ir/target/st"
+	_ "lomo/ir/target/st/z"
 	"lomo/loco/lpp"
 	_ "lomo/loco/lpp/p"
 	"lomo/loco/lss"

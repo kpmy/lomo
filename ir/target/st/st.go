@@ -18,6 +18,8 @@ import (
 	"strings"
 )
 
+const VERSION = 0.1
+
 const prefix = "base64:"
 
 //dynamic xml marshaller
@@ -561,6 +563,6 @@ func (i *impl) NewCode(u *ir.Unit, wr io.Writer) {
 	}
 }
 
-func init() {
-	target.Impl = &impl{}
+func Init() target.Target {
+	return &impl{}
 }

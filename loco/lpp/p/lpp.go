@@ -189,8 +189,9 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 	for p.await(lss.Var, lss.Separator, lss.Delimiter) || p.is(lss.Reg) {
 		p.varDecl()
 	}
-	p.expect(lss.Process, "PROCESS expected", lss.Delimiter, lss.Separator)
-	p.rulesDecl()
+	if p.await(lss.Process, lss.Delimiter, lss.Separator) {
+		p.rulesDecl()
+	}
 	p.expect(lss.End, "END expected", lss.Delimiter, lss.Separator)
 	p.next()
 	p.expect(lss.Ident, "unit name expected", lss.Separator)
