@@ -1,3 +1,16 @@
+UNIT Selectors
+	CONST
+		hw = "HELLO, WORLD!"
+	VAR
+		c CHAR
+		s, s0, s1 STRING
+PROCESS
+	hw[0] -> c
+	hw[1, 2, 3] -> s0
+	hw[4 + 1 .. 5 + 4] -> s
+	hw[3 ..] -> s1
+END Selectors
+
 UNIT Atoms
 	CONST A; B; C
 	VAR a, b, c, d ATOM
@@ -20,7 +33,6 @@ UNIT Strings
 		s0, s1, s2, s3 STRING
 		t0, t1, t2, t3 STRING
 		ok0, ok1 BOOLEAN
-		a Atoms
 PROCESS
 	hello + ", "+ world + `!` -> s0
 	s0 -> t0
@@ -46,7 +58,6 @@ UNIT Chars
 		y CHAR
 		ok0,  ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10 BOOLEAN
 	REG p, q TRILEAN
-	VAR str Strings
 PROCESS
 	'$' -> x
 	0DU -> x0
@@ -70,7 +81,6 @@ UNIT Pow
 	REG j INTEGER
 	REG s, t INTEGER
 	REG p, q, z, w REAL
-	VAR ch Chars
 PROCESS
 	2 ^ 2 * 2 -> i
 	10 + i ^ (i + 3) // 2 // 3 // 4 // 5 // 6 // 7 -> j
@@ -85,7 +95,7 @@ UNIT Comp
 VAR
 	i, j INTEGER
 	ok0, ok1, ok2, ok3 BOOLEAN
-	p Pow
+
 PROCESS
 	4 -> i
 	(i + 9) % 2 -> j
@@ -97,7 +107,7 @@ END Comp
 
 UNIT Logic
 	REG a, b, c BOOLEAN; p, q, r TRILEAN;
-	VAR comp Comp
+
 PROCESS
 	TRUE -> a
 	FALSE -> b
@@ -157,7 +167,7 @@ UNIT Arithmetics
 		a = 42
 		b = 1945
 		c = 100500
-	VAR x INTEGER; big Big; l Logic; re Reals; im Complex
+	VAR x INTEGER;
 PROCESS
 	(a * b + 2 * a * c - c % a + (a + b + c) ^ 2) // 2 -> x
 END Arithmetics
@@ -167,7 +177,6 @@ UNIT Bool
 		a = TRUE
 		b = ~a
 	REG x, n BOOLEAN
-	VAR z Arithmetics
 PROCESS
 	b | x ? a & b : a | b -> x
 	~n -> n
@@ -181,14 +190,14 @@ UNIT Basic
 		max = 10
 
 	REG r,  x INTEGER
-	VAR b Bool
+
 PROCESS
 	x >= 0 ? r + x : r -> r
 	x >= 0 ? x < max ? x + 1 : -1 : -1 -> x
 END Basic
 
 UNIT Fly
-	VAR x- INTEGER; m INTEGER; b Basic
+	VAR x- INTEGER; m INTEGER;
 	REG num INTEGER;
 PROCESS
 	x -> m
@@ -205,7 +214,23 @@ END Die
 
 UNIT Top
 	REG r INTEGER
-	VAR w, y+, z- INTEGER; a, b, c Fly; d Die
+	VAR w, y+, z- INTEGER;
+	a, b, c Fly; d Die
+	(*testing*)
+	VAR
+		boo Bool
+		aa Atoms
+		bb Basic
+		zz Arithmetics
+		big Big
+		l Logic
+		re Reals
+		im Complex
+		comp Comp
+		p Pow
+		ch Chars
+		str Strings
+		ss Selectors
 PROCESS
 	w -> a.x
 	18 -> w

@@ -9,6 +9,7 @@ import (
 	"lomo/ir/mods"
 	"lomo/ir/ops"
 	"lomo/ir/types"
+	"math"
 	"math/big"
 	"reflect"
 	"sync"
@@ -82,13 +83,91 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 			} else {
 				halt.As(100)
 			}
-			base := stack.pop()
 			if e.Inner != mods.NONE {
+				base := stack.pop()
 				switch {
 				case e.Inner == mods.LIST && len(e.ExprList) == 1: //single item
+					expr(e.ExprList[0])
+					_i := stack.pop()
+					idx := int(_i.toInt().Int64())
+
+					switch base.typ {
+					case types.STRING:
+						s := []rune(base.toStr())
+						assert.For(idx >= 0 && idx < len(s), 40)
+						stack.push(&value{typ: types.CHAR, val: s[idx]})
+					default:
+						halt.As(100, "not indexable", base.typ)
+					}
 				case e.Inner == mods.LIST && len(e.ExprList) > 1: //some items
+					switch base.typ {
+					case types.STRING:
+						s := []rune(base.toStr())
+						var ret []rune
+
+						for _, _e := range e.ExprList {
+							expr(_e)
+							_i := stack.pop()
+							i := int(_i.toInt().Int64())
+							assert.For(i >= 0 && i < len(s), 40)
+							ret = append(ret, s[i])
+						}
+						stack.push(&value{typ: types.STRING, val: string(ret)})
+					default:
+						halt.As(100, "not indexable")
+					}
 				case e.Inner == mods.RANGE && len(e.ExprList) == 2: //range min (from, to) .. max(from, to) with reverse
+					expr(e.ExprList[0])
+					_f := stack.pop()
+					expr(e.ExprList[1])
+					_t := stack.pop()
+					from := _f.toInt().Int64()
+					to := _t.toInt().Int64()
+
+					if int64(math.Max(float64(from), float64(to))) == to { //forward
+						switch base.typ {
+						case types.STRING:
+							s := []rune(base.toStr())
+							var ret []rune
+							for i := int(from); i <= int(to); i++ {
+								assert.For(i >= 0 && i < len(s), 40)
+								ret = append(ret, s[i])
+							}
+							stack.push(&value{typ: types.STRING, val: string(ret)})
+						default:
+							halt.As(100, "not indexable", base.typ)
+						}
+					} else {
+						switch base.typ {
+						case types.STRING:
+							s := []rune(base.toStr())
+							var ret []rune
+							for i := int(to); i >= int(from); i-- {
+								assert.For(i >= 0 && i < len(s), 40)
+								ret = append(ret, s[i])
+							}
+							stack.push(&value{typ: types.STRING, val: string(ret)})
+						default:
+							halt.As(100, "not indexable", base.typ)
+						}
+					}
 				case e.Inner == mods.RANGE && len(e.ExprList) == 1: //open range from `from` to the end of smth
+					expr(e.ExprList[0])
+					_i := stack.pop()
+					idx := int(_i.toInt().Int64())
+
+					switch base.typ {
+					case types.STRING:
+						s := []rune(base.toStr())
+						var ret []rune
+						for i := int(idx); i < len(s); i++ {
+							assert.For(i >= 0 && i < len(s), 40)
+							ret = append(ret, s[i])
+						}
+						stack.push(&value{typ: types.STRING, val: string(ret)})
+					default:
+						halt.As(100, "not indexable")
+					}
 				default:
 					halt.As(100, "unexpected selector ", base)
 				}
