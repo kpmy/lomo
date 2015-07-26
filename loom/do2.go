@@ -21,6 +21,7 @@ type Unit struct {
 	code    *ir.Unit
 	objects map[string]object
 	imps    map[string]*Unit
+	loader  Loader
 }
 
 func (u *Unit) init(old *Unit) {
@@ -301,6 +302,28 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 			} else {
 				expr(e.Else)
 			}
+		case *ir.InfixExpr:
+			var args []*value
+			for _, a := range e.Args {
+				expr(a)
+				args = append(args, stack.pop())
+			}
+			cm := Init(e.Unit.Name(), u.loader)
+			Do(cm, func(cm Cluster) {
+				log.Println("started ", e.Unit.Name())
+				inf := cm[e.Unit.Name()]
+				for i := len(args) - 1; i >= 0; i-- {
+					go func(i int, v *value) {
+						o := inf.objects[inf.code.Infix[i].Name]
+						o.set(v)
+					}(i+1, args[i])
+				}
+				go func() {
+					o := inf.objects[inf.code.Infix[0].Name]
+					stack.push(o.get())
+				}()
+			}).Wait()
+			Close(cm).Wait()
 		default:
 			halt.As(100, reflect.TypeOf(e))
 		}
@@ -332,14 +355,14 @@ func Init(_top string, ld Loader) (ret map[string]*Unit) {
 		}
 	}
 	if top := ld(_top); top != nil {
-		ret[_top] = &Unit{code: top}
+		ret[_top] = &Unit{code: top, loader: ld}
 		run(ret[_top])
 	}
 	return
 }
 
-func Do(um Cluster, old ...Cluster) (ret *sync.WaitGroup) {
-	ret = _wg
+func Do(um Cluster, pre func(Cluster), old ...Cluster) (ret *sync.WaitGroup) {
+	ret = &sync.WaitGroup{}
 	for _, u := range um {
 		var o *Unit
 		if len(old) > 0 && old[0] != nil {
@@ -347,8 +370,12 @@ func Do(um Cluster, old ...Cluster) (ret *sync.WaitGroup) {
 		}
 		u.init(o)
 	}
+	if pre != nil {
+		pre(um)
+	}
 	for _, u := range um {
 		ret.Add(1)
+		_wg.Add(1)
 		go func(this *Unit) {
 			rg := &sync.WaitGroup{}
 			for v, r := range this.code.Rules {
@@ -372,6 +399,7 @@ func Do(um Cluster, old ...Cluster) (ret *sync.WaitGroup) {
 				}
 			}
 			rg.Wait()
+			_wg.Done()
 			ret.Done()
 		}(u)
 	}
@@ -379,14 +407,16 @@ func Do(um Cluster, old ...Cluster) (ret *sync.WaitGroup) {
 }
 
 func Close(um Cluster) (ret *sync.WaitGroup) {
-	ret = _wg
+	ret = &sync.WaitGroup{}
 	for _, u := range um {
 		ret.Add(1)
+		_wg.Add(1)
 		go func(u *Unit) {
 			for _, o := range u.objects {
 				o.control() <- true
 				<-o.control()
 			}
+			_wg.Done()
 			ret.Done()
 		}(u)
 	}

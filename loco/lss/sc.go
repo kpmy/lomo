@@ -73,6 +73,9 @@ const (
 	Process
 	Reg
 	Const
+	Infix
+	Pre
+	Post
 
 	Eof
 )
@@ -111,7 +114,10 @@ func init() {
 		"NULL":    Null,
 		"INF":     Inf,
 		"CONST":   Const,
-		"UNDEF":   Undef}
+		"UNDEF":   Undef,
+		"INFIX":   Infix,
+		"PRE":     Pre,
+		"POST":    Post}
 }
 
 func (s Symbol) String() (ret string) {

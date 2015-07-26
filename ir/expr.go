@@ -52,3 +52,10 @@ type AtomExpr struct {
 }
 
 func (a *AtomExpr) Print() string { return "atom expr" }
+
+type InfixExpr struct {
+	Unit ForeignType
+	Args []Expression
+}
+
+func (i *InfixExpr) Print() string { return "infix expr" }

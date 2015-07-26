@@ -45,10 +45,12 @@ func (u *extern) attr(start *xml.StartElement, name string, value interface{}) {
 		} else {
 			str("false")
 		}
+	case int:
+		str(strconv.Itoa(v))
 	case types.Type:
 		str(v.String())
 	default:
-		halt.As(100, v)
+		halt.As(100, reflect.TypeOf(v), v)
 	}
 }
 
@@ -90,6 +92,16 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			n := &extern{x: v}
 			e.Encode(n)
 		}
+		if len(x.Infix) > 0 {
+			inf := xml.StartElement{}
+			inf.Name.Local = "infix"
+			u.attr(&inf, "num", len(x.Infix))
+			for i, v := range x.Infix {
+				u.attr(&inf, "arg"+strconv.Itoa(i), v.Name)
+			}
+			e.EncodeToken(inf)
+			e.EncodeToken(inf.End())
+		}
 		err = e.EncodeToken(start.End())
 	case ir.ForeignType:
 		start.Name.Local = "definition"
@@ -105,6 +117,16 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			u.attr(&imp, "name", v)
 			e.EncodeToken(imp)
 			e.EncodeToken(imp.End())
+		}
+		if len(x.Infix()) > 0 {
+			inf := xml.StartElement{}
+			inf.Name.Local = "infix"
+			u.attr(&inf, "num", len(x.Infix()))
+			for i, v := range x.Infix() {
+				u.attr(&inf, "arg"+strconv.Itoa(i), v.Name)
+			}
+			e.EncodeToken(inf)
+			e.EncodeToken(inf.End())
 		}
 		err = e.EncodeToken(start.End())
 	case *ir.Variable:
@@ -228,6 +250,15 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			e.Encode(n)
 		}
 		e.EncodeToken(start.End())
+	case *ir.InfixExpr:
+		start.Name.Local = "infix-expression"
+		u.attr(&start, "unit", x.Unit.Name())
+		e.EncodeToken(start)
+		for _, v := range x.Args {
+			n := &extern{x: v}
+			e.Encode(n)
+		}
+		e.EncodeToken(start.End())
 	default:
 		halt.As(100, reflect.TypeOf(x))
 	}
@@ -252,6 +283,8 @@ func (f *futureForeignType) Name() string { return f.name }
 func (f *futureForeignType) Variables() map[string]*ir.Variable { return f.fakeUnit.Variables }
 
 func (f *futureForeignType) Imports() []string { return f.imps }
+
+func (f *futureForeignType) Infix() []*ir.Variable { return f.fakeUnit.Infix }
 
 func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 	for _, x := range start.Attr {
@@ -311,6 +344,10 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				x.Unit = u
 			case *ir.Const:
 				u.Const[x.Name] = x
+			case []string:
+				for _, s := range x {
+					u.Infix = append(u.Infix, u.Variables[s])
+				}
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -328,6 +365,10 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				x.Unit = f.fakeUnit
 			case string:
 				f.imps = append(f.imps, x)
+			case []string:
+				for _, s := range x {
+					f.fakeUnit.Infix = append(f.fakeUnit.Infix, f.fakeUnit.Variables[s])
+				}
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -394,6 +435,16 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "import":
 		name := i.attr(&start, "name").(string)
 		i.consume(name)
+	case "infix":
+		if num, err := strconv.Atoi(i.attr(&start, "num").(string)); err == nil {
+			var ret []string
+			for j := 0; j < num; j++ {
+				ret = append(ret, i.attr(&start, "arg"+strconv.Itoa(j)).(string))
+			}
+			i.consume(ret)
+		} else {
+			halt.As(101, start)
+		}
 	case "becomes":
 		r := &ir.AssignRule{}
 		i.x = r
@@ -510,6 +561,19 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				} else {
 					halt.As(100, "too much")
 				}
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "infix-expression":
+		inf := &ir.InfixExpr{}
+		inf.Unit = &futureForeignType{name: i.attr(&start, "unit").(string)}
+		i.x = inf
+		i.consume(inf)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				inf.Args = append(inf.Args, x)
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}

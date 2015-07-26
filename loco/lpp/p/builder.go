@@ -43,6 +43,11 @@ func (b *exprBuilder) push(_e ir.Expression) {
 		e.Then = b.pop()
 		e.If = b.pop()
 		b.stack.PushFront(e)
+	case *ir.InfixExpr:
+		for i := 1; i < len(e.Unit.Infix()); i++ {
+			e.Args = append(e.Args, b.pop())
+		}
+		b.stack.PushFront(e)
 	default:
 		halt.As(100, reflect.TypeOf(e))
 	}
@@ -70,7 +75,7 @@ func (b *exprBuilder) forward(f func()) bool {
 func (b *exprBuilder) final() (ret ir.Expression) {
 	b.init()
 	ret = b.pop()
-	assert.For(ret != nil && b.stack.Len() == 0, 60)
+	assert.For(ret != nil && b.stack.Len() == 0, 60, b.stack.Len())
 	return
 }
 

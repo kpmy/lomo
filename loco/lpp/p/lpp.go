@@ -189,6 +189,46 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 	for p.await(lss.Var, lss.Separator, lss.Delimiter) || p.is(lss.Reg) {
 		p.varDecl()
 	}
+	for stop := false; !stop; {
+		p.pass(lss.Delimiter, lss.Separator)
+		switch p.sym.Code {
+		case lss.Infix:
+			p.next()
+			for stop := false; !stop; {
+				if p.await(lss.Ident, lss.Separator) {
+					obj := p.target.unit.Variables[p.ident()]
+					if obj == nil {
+						p.mark("unknown identifier")
+					}
+					p.target.unit.Infix = append(p.target.unit.Infix, obj)
+					p.next()
+					if p.await(lss.Delimiter, lss.Separator) {
+						p.next()
+						stop = true
+					}
+				} else if p.is(lss.Delimiter) {
+					stop = true
+					p.next()
+				} else {
+					p.mark("identifier expected", p.sym.Code)
+				}
+			}
+		case lss.Pre:
+			p.next()
+			expr := &exprBuilder{tgt: &p.target, marker: p}
+			p.expression(expr)
+			p.target.unit.Pre = append(p.target.unit.Pre, expr.final())
+			p.expect(lss.Delimiter, "delimiter expected", lss.Separator)
+		case lss.Post:
+			p.next()
+			expr := &exprBuilder{tgt: &p.target, marker: p}
+			p.expression(expr)
+			p.target.unit.Post = append(p.target.unit.Post, expr.final())
+			p.expect(lss.Delimiter, "delimiter expected", lss.Separator)
+		default:
+			stop = true
+		}
+	}
 	if p.await(lss.Process, lss.Delimiter, lss.Separator) {
 		p.rulesDecl()
 	}
@@ -203,7 +243,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 
 func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
-	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False, lss.Null, lss.Undef)
+	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False, lss.Null, lss.Undef, lss.Infix, lss.Pre, lss.Post)
 	ret.sc = sc
 	ret._resolve = r
 	ret.init()

@@ -43,7 +43,7 @@ func TestBasics(t *testing.T) {
 					var old loom.Cluster
 					for i := 0; i < 100; i++ {
 						mm := loom.Init("Top", ld)
-						loom.Do(mm, old).Wait()
+						loom.Do(mm, nil, old).Wait()
 						loom.Close(mm).Wait()
 						old = mm
 					}

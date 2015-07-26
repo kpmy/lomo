@@ -11,6 +11,16 @@ PROCESS
 	hw[3 ..] -> s1
 END Selectors
 
+UNIT AtomsIf
+	CONST
+		zero; one; two; three; many
+	VAR a ATOM
+	REG n INTEGER
+PROCESS
+	n + 1 -> n
+	n = 0 ? zero : n = 1 ? one : n = 2 ? two : n = 3 ? three : many -> a
+END AtomsIf
+
 UNIT Atoms
 	CONST A; B; C
 	VAR a, b, c, d ATOM
@@ -231,6 +241,7 @@ UNIT Top
 		ch Chars
 		str Strings
 		ss Selectors
+		ai AtomsIf
 PROCESS
 	w -> a.x
 	18 -> w

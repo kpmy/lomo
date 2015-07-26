@@ -302,6 +302,29 @@ func (p *common) factor(b *exprBuilder) {
 		p.expect(lss.Rparen, ") expected", lss.Separator)
 		p.next()
 		b.push(expr)
+	case lss.Infixate:
+		p.next()
+		p.expect(lss.Ident, "identifier expected")
+		id := p.ident()
+		p.next()
+		limit := 0
+		for stop := false; !stop; {
+			expr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+			p.expression(expr)
+			b.push(expr)
+			limit++
+			if p.await(lss.Comma, lss.Separator) {
+				p.next()
+			} else {
+				stop = true
+			}
+		}
+		def := b.tgt.resolve(id)
+		if limit > 1 {
+			p.mark("expected one arg")
+		}
+		e := &ir.InfixExpr{Unit: def}
+		b.push(e)
 	case lss.Colon:
 		//skip for the parents
 	default:
@@ -394,6 +417,29 @@ func (p *common) cmp(b *exprBuilder) {
 		p.pass(lss.Separator)
 		p.quantum(b)
 		b.push(&ir.Dyadic{Op: ops.Map(op)})
+	case lss.Infixate:
+		p.next()
+		p.expect(lss.Ident, "identifier expected")
+		id := p.ident()
+		p.next()
+		limit := 2 //result + first quantum
+		for stop := false; !stop; {
+			expr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+			p.quantum(expr)
+			b.push(expr)
+			limit++
+			if p.await(lss.Comma, lss.Separator) {
+				p.next()
+			} else {
+				stop = true
+			}
+		}
+		def := b.tgt.resolve(id)
+		if limit < len(def.Infix()) {
+			p.mark("expected ", len(def.Infix()), " args")
+		}
+		e := &ir.InfixExpr{Unit: def}
+		b.push(e)
 	}
 
 }

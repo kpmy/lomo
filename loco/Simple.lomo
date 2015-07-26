@@ -1,3 +1,12 @@
-UNIT Top
+UNIT Max
+	VAR a-, b-, res+ INTEGER
+	INFIX res a b
+PROCESS
+	a > b ? a : b -> res
+END Max
 
+UNIT Top
+	VAR x INTEGER
+PROCESS
+	4 \Max 5 -> x
 END Top

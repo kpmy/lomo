@@ -9,12 +9,14 @@ type ForeignType interface {
 	Name() string
 	Variables() map[string]*Variable
 	Imports() []string
+	Infix() []*Variable
 }
 
 type foreignType struct {
 	name      string
 	variables map[string]*Variable
 	imps      []string
+	inf       []*Variable
 }
 
 func (f *foreignType) Name() string { return f.name }
@@ -22,6 +24,8 @@ func (f *foreignType) Name() string { return f.name }
 func (f *foreignType) Variables() map[string]*Variable { return f.variables }
 
 func (f *foreignType) Imports() []string { return f.imps }
+
+func (f *foreignType) Infix() []*Variable { return f.inf }
 
 func NewForeign(u *Unit) ForeignType {
 	ret := &foreignType{name: u.Name}
@@ -37,6 +41,9 @@ func NewForeign(u *Unit) ForeignType {
 	}
 	for k, _ := range imps {
 		ret.imps = append(ret.imps, k)
+	}
+	for _, v := range u.Infix {
+		ret.inf = append(ret.inf, v)
 	}
 	return ret
 }
@@ -71,6 +78,8 @@ type Unit struct {
 	Const        map[string]*Const
 	Rules        map[string]Rule
 	ForeignRules map[string]map[string]Rule
+	Infix        []*Variable
+	Pre, Post    []Expression
 }
 
 func NewUnit(name string) *Unit {
