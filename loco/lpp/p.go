@@ -12,3 +12,9 @@ type UnitParser interface {
 }
 
 var ConnectToUnit func(lss.Scanner, ForeignResolver) UnitParser
+
+var Std map[string]ir.ForeignType
+
+func init() {
+	Std = make(map[string]ir.ForeignType)
+}

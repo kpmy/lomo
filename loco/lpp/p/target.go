@@ -28,7 +28,9 @@ func (t *target) resolve(name string) (ret ir.ForeignType) {
 		}
 		return
 	}
-	if ret = t.cache[name]; ret == nil {
+	if std := lpp.Std[name]; std != nil {
+		ret = std
+	} else if ret = t.cache[name]; ret == nil {
 		if imp := t._resolve(name); imp != nil {
 			if !cyclic(imp) {
 				ret = imp

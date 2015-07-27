@@ -9,6 +9,7 @@ import (
 	"lomo/ir/mods"
 	"lomo/ir/ops"
 	"lomo/ir/types"
+	"lomo/loco/lpp"
 	"math"
 	"math/big"
 	"reflect"
@@ -57,6 +58,7 @@ func get(o object) *value {
 	log.Println(o, "get")
 	return o.read()
 }
+
 func (u *Unit) expr(e ir.Expression) *value {
 	stack := &exprStack{}
 	stack.init()
@@ -317,8 +319,8 @@ func (u *Unit) expr(e ir.Expression) *value {
 			cm := Init(e.Unit.Name(), u.loader)
 			c := make(chan value, 1)
 			Do(cm, func(cm Cluster) {
-				log.Println("started ", e.Unit.Name())
 				inf := cm[e.Unit.Name()]
+				assert.For(inf != nil, 40)
 				for i := len(args) - 1; i >= 0; i-- {
 					go func(i int, v *value) {
 						o := inf.objects[inf.code.Infix[i].Name]
@@ -349,6 +351,8 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 		v := u.expr(r.Expr)
 		log.Println("for ", o.schema().Name)
 		set(o, v)
+	case stdRule:
+		r.do(u, o)
 	default:
 		halt.As(100, reflect.TypeOf(r))
 	}
@@ -370,7 +374,10 @@ func Init(_top string, ld Loader) (ret map[string]*Unit) {
 			}
 		}
 	}
-	if top := ld(_top); top != nil {
+	if std := lpp.Std[_top]; std != nil {
+		ret[_top] = stdUnit(std)
+		run(ret[_top])
+	} else if top := ld(_top); top != nil {
 		ret[_top] = &Unit{code: top, loader: ld}
 		run(ret[_top])
 	}

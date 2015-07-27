@@ -319,15 +319,18 @@ func (p *common) factor(b *exprBuilder) {
 				stop = true
 			}
 		}
-		def := b.tgt.resolve(id)
-		if len(def.Infix()) == 0 {
-			p.mark(def.Name(), " not infixated")
+		if def := b.tgt.resolve(id); def != nil {
+			if len(def.Infix()) == 0 {
+				p.mark(def.Name(), " not infixated")
+			}
+			if limit < len(def.Infix()) {
+				p.mark("expected ", len(def.Infix())-1, " arg")
+			}
+			e := &ir.InfixExpr{Unit: def}
+			b.push(e)
+		} else {
+			b.marker.Mark("unit ", id, " not resolved")
 		}
-		if limit < len(def.Infix()) {
-			p.mark("expected ", len(def.Infix())-1, " arg")
-		}
-		e := &ir.InfixExpr{Unit: def}
-		b.push(e)
 	case lss.Colon:
 		//skip for the parents
 	default:
@@ -437,15 +440,18 @@ func (p *common) cmp(b *exprBuilder) {
 				stop = true
 			}
 		}
-		def := b.tgt.resolve(id)
-		if len(def.Infix()) == 0 {
-			p.mark(def.Name(), " not infixated")
+		if def := b.tgt.resolve(id); def != nil {
+			if len(def.Infix()) == 0 {
+				p.mark(def.Name(), " not infixated")
+			}
+			if limit < len(def.Infix()) {
+				p.mark("expected ", len(def.Infix()), " args")
+			}
+			e := &ir.InfixExpr{Unit: def}
+			b.push(e)
+		} else {
+			b.marker.Mark("unit ", id, " not resolved")
 		}
-		if limit < len(def.Infix()) {
-			p.mark("expected ", len(def.Infix()), " args")
-		}
-		e := &ir.InfixExpr{Unit: def}
-		b.push(e)
 	}
 
 }
