@@ -307,7 +307,7 @@ func (p *common) factor(b *exprBuilder) {
 		p.expect(lss.Ident, "identifier expected")
 		id := p.ident()
 		p.next()
-		limit := 0
+		limit := 1
 		for stop := false; !stop; {
 			expr := &exprBuilder{tgt: b.tgt, marker: b.marker}
 			p.expression(expr)
@@ -320,8 +320,11 @@ func (p *common) factor(b *exprBuilder) {
 			}
 		}
 		def := b.tgt.resolve(id)
-		if limit > 1 {
-			p.mark("expected one arg")
+		if len(def.Infix()) == 0 {
+			p.mark(def.Name(), " not infixated")
+		}
+		if limit < len(def.Infix()) {
+			p.mark("expected ", len(def.Infix())-1, " arg")
 		}
 		e := &ir.InfixExpr{Unit: def}
 		b.push(e)
@@ -435,6 +438,9 @@ func (p *common) cmp(b *exprBuilder) {
 			}
 		}
 		def := b.tgt.resolve(id)
+		if len(def.Infix()) == 0 {
+			p.mark(def.Name(), " not infixated")
+		}
 		if limit < len(def.Infix()) {
 			p.mark("expected ", len(def.Infix()), " args")
 		}

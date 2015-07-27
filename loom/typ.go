@@ -122,6 +122,8 @@ func NewAny(typ types.Type, val interface{}) *Any {
 
 func compTypes(propose, expect types.Type) (ret bool) {
 	switch {
+	case propose == types.INTEGER && expect == types.REAL:
+		ret = true
 	case propose == types.BOOLEAN && expect == types.TRILEAN:
 		ret = true
 	case propose == types.ANY && expect == types.ATOM:
@@ -136,6 +138,10 @@ func compTypes(propose, expect types.Type) (ret bool) {
 
 func conv(v *value, target types.Type) (ret *value) {
 	switch {
+	case v.typ == types.INTEGER && target == types.REAL:
+		i := v.toInt()
+		x := big.NewRat(0, 1)
+		ret = &value{typ: target, val: ThisRat(x.SetInt(i))}
 	case v.typ == types.BOOLEAN && target == types.TRILEAN:
 		b := v.toBool()
 		x := tri.This(b)

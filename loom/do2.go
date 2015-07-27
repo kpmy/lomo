@@ -53,6 +53,11 @@ func set(o object, v *value) {
 	o.set(conv(v, t))
 }
 
+func get(o object) *value {
+	log.Println(o, "get")
+	return o.get()
+}
+
 func (u *Unit) rule(o object, _r ir.Rule) {
 	stack := &exprStack{}
 	stack.init()
@@ -234,6 +239,7 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 		case *ir.Dyadic:
 			var l, r *value
 			if !(e.Op == ops.Or || e.Op == ops.And) {
+
 				expr(e.Left)
 				l = stack.pop()
 				expr(e.Right)
@@ -309,21 +315,26 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 				args = append(args, stack.pop())
 			}
 			cm := Init(e.Unit.Name(), u.loader)
+			c := make(chan value, 1)
 			Do(cm, func(cm Cluster) {
 				log.Println("started ", e.Unit.Name())
 				inf := cm[e.Unit.Name()]
 				for i := len(args) - 1; i >= 0; i-- {
 					go func(i int, v *value) {
 						o := inf.objects[inf.code.Infix[i].Name]
-						o.set(v)
+						set(o, v)
 					}(i+1, args[i])
 				}
-				go func() {
+				go func(c chan value) {
 					o := inf.objects[inf.code.Infix[0].Name]
-					stack.push(o.get())
-				}()
+					v := get(o)
+					log.Println("infix", v)
+					c <- *v
+				}(c)
 			}).Wait()
+			v := <-c
 			Close(cm).Wait()
+			stack.push(&v)
 		default:
 			halt.As(100, reflect.TypeOf(e))
 		}
@@ -340,6 +351,7 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 }
 
 func Init(_top string, ld Loader) (ret map[string]*Unit) {
+	assert.For(ld != nil, 20, _top)
 	ret = make(map[string]*Unit)
 	var run func(*Unit)
 	run = func(u *Unit) {
@@ -347,7 +359,7 @@ func Init(_top string, ld Loader) (ret map[string]*Unit) {
 		for _, v := range u.code.Variables {
 			if !v.Type.Basic {
 				if dep := ld(v.Type.Foreign.Name()); dep != nil {
-					ret[imp(v)] = &Unit{code: dep}
+					ret[imp(v)] = &Unit{code: dep, loader: ld}
 					v.Type.Foreign = ir.NewForeign(dep)
 					run(ret[imp(v)])
 				}

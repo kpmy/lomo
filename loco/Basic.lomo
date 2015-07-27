@@ -1,3 +1,25 @@
+UNIT Max
+	VAR a-, b-, res+ INTEGER
+	INFIX res a b
+PROCESS
+	a > b ? a : b -> res
+END Max
+
+UNIT Pi
+	CONST pi = 3.14181
+	VAR res+, n- REAL
+	INFIX res n
+PROCESS
+	n * pi -> res
+END Pi
+
+UNIT Infix
+	VAR x INTEGER; pi REAL
+PROCESS
+	4 \Max 5 -> x
+	\Pi 2 -> pi
+END Infix
+
 UNIT Selectors
 	CONST
 		hw = "HELLO, WORLD!"
@@ -242,6 +264,7 @@ UNIT Top
 		str Strings
 		ss Selectors
 		ai AtomsIf
+		inf Infix
 PROCESS
 	w -> a.x
 	18 -> w
