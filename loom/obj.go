@@ -5,6 +5,7 @@ import (
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/fn"
 	"github.com/kpmy/ypk/halt"
+	"log"
 	"lomo/ir"
 	"lomo/ir/mods"
 	"lomo/ir/types"
@@ -12,8 +13,8 @@ import (
 
 type object interface {
 	init(*ir.Variable, chan bool, ...interface{})
-	set(*value)
-	get() *value
+	write(*value)
+	read() *value
 	schema() *ir.Variable
 	control() chan bool
 }
@@ -72,8 +73,8 @@ func (m *mem) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 	}
 }
 
-func (o *mem) get() *value { return &value{typ: o.v.Type.Builtin.Code, val: <-o.c} }
-func (o *mem) set(v *value) {
+func (o *mem) read() *value { return &value{typ: o.v.Type.Builtin.Code, val: <-o.c} }
+func (o *mem) write(v *value) {
 	assert.For(v != nil, 20)
 	o.s <- v.val
 }
@@ -106,11 +107,13 @@ func (d *direct) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 			if fn.IsNil(x) {
 				select {
 				case x = <-d.s:
+					log.Println("rd", x)
 				case stop = <-d.ctrl:
 				}
 			} else {
 				select {
 				case d.c <- x:
+					log.Println("wr", x)
 				case stop = <-d.ctrl:
 				}
 			}
@@ -119,11 +122,11 @@ func (d *direct) init(v *ir.Variable, ctrl chan bool, def ...interface{}) {
 	}()
 }
 
-func (o *direct) get() *value {
+func (o *direct) read() *value {
 	return &value{typ: o.v.Type.Builtin.Code, val: <-o.c}
 }
 
-func (o *direct) set(x *value) {
+func (o *direct) write(x *value) {
 	assert.For(x != nil, 20)
 	o.s <- x.val
 }

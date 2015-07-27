@@ -1,3 +1,18 @@
+UNIT Cond
+	VAR x-, z+ INTEGER
+	PRE x > 0
+	POST z > 1
+PROCESS
+	x -> z
+END Cond
+
+UNIT Pre
+	VAR x INTEGER; c Cond
+PROCESS
+	3 -> c.x
+	c.z -> x
+END Pre
+
 UNIT Max
 	VAR a-, b-, res+ INTEGER
 	INFIX res a b
@@ -265,6 +280,7 @@ UNIT Top
 		ss Selectors
 		ai AtomsIf
 		inf Infix
+		pr Pre
 PROCESS
 	w -> a.x
 	18 -> w

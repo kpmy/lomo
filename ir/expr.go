@@ -59,3 +59,8 @@ type InfixExpr struct {
 }
 
 func (i *InfixExpr) Print() string { return "infix expr" }
+
+type WrappedExpression interface {
+	Expression
+	Process() Expression
+}

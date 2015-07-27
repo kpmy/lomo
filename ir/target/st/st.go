@@ -102,6 +102,22 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			e.EncodeToken(inf)
 			e.EncodeToken(inf.End())
 		}
+		for _, v := range x.Pre {
+			pre := xml.StartElement{}
+			pre.Name.Local = "precondition"
+			e.EncodeToken(pre)
+			n := &extern{x: v}
+			e.Encode(n)
+			e.EncodeToken(pre.End())
+		}
+		for _, v := range x.Post {
+			post := xml.StartElement{}
+			post.Name.Local = "postcondition"
+			e.EncodeToken(post)
+			n := &extern{x: v}
+			e.Encode(n)
+			e.EncodeToken(post.End())
+		}
 		err = e.EncodeToken(start.End())
 	case ir.ForeignType:
 		start.Name.Local = "definition"
@@ -286,6 +302,20 @@ func (f *futureForeignType) Imports() []string { return f.imps }
 
 func (f *futureForeignType) Infix() []*ir.Variable { return f.fakeUnit.Infix }
 
+type pre struct {
+	expr ir.Expression
+}
+
+type post struct {
+	expr ir.Expression
+}
+
+func (p *pre) Print() string  { return "pre" }
+func (p *post) Print() string { return "post" }
+
+func (p *pre) Process() ir.Expression  { return p.expr }
+func (p *post) Process() ir.Expression { return p.expr }
+
 func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 	for _, x := range start.Attr {
 		if x.Name.Local == name {
@@ -348,6 +378,10 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 				for _, s := range x {
 					u.Infix = append(u.Infix, u.Variables[s])
 				}
+			case *pre:
+				u.Pre = append(u.Pre, x)
+			case *post:
+				u.Post = append(u.Post, x)
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}
@@ -435,6 +469,30 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 	case "import":
 		name := i.attr(&start, "name").(string)
 		i.consume(name)
+	case "precondition":
+		p := &pre{}
+		i.x = p
+		i.consume(p)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				p.expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "postcondition":
+		p := &post{}
+		i.x = p
+		i.consume(p)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				p.expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
 	case "infix":
 		if num, err := strconv.Atoi(i.attr(&start, "num").(string)); err == nil {
 			var ret []string

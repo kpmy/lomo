@@ -218,13 +218,11 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 			expr := &exprBuilder{tgt: &p.target, marker: p}
 			p.expression(expr)
 			p.target.unit.Pre = append(p.target.unit.Pre, expr.final())
-			p.expect(lss.Delimiter, "delimiter expected", lss.Separator)
 		case lss.Post:
 			p.next()
 			expr := &exprBuilder{tgt: &p.target, marker: p}
 			p.expression(expr)
 			p.target.unit.Post = append(p.target.unit.Post, expr.final())
-			p.expect(lss.Delimiter, "delimiter expected", lss.Separator)
 		default:
 			stop = true
 		}

@@ -50,20 +50,21 @@ func set(o object, v *value) {
 	log.Println(o, "set", v)
 	t := o.schema().Type.Builtin.Code
 	assert.For(compTypes(v.typ, t), 60)
-	o.set(conv(v, t))
+	o.write(conv(v, t))
 }
 
 func get(o object) *value {
 	log.Println(o, "get")
-	return o.get()
+	return o.read()
 }
-
-func (u *Unit) rule(o object, _r ir.Rule) {
+func (u *Unit) expr(e ir.Expression) *value {
 	stack := &exprStack{}
 	stack.init()
 	var expr func(ir.Expression)
 	expr = func(_e ir.Expression) {
 		switch e := _e.(type) {
+		case ir.WrappedExpression:
+			expr(e.Process())
 		case *ir.ConstExpr:
 			stack.push(cval(e))
 		case *ir.AtomExpr:
@@ -79,7 +80,7 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 						o = imp.objects[e.Foreign.Name]
 					}
 				}
-				stack.push(o.get())
+				stack.push(get(o))
 			} else if e.Const != nil {
 				if c := u.code.Const[e.Const.Name]; c != nil {
 					expr(c.Expr)
@@ -239,7 +240,6 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 		case *ir.Dyadic:
 			var l, r *value
 			if !(e.Op == ops.Or || e.Op == ops.And) {
-
 				expr(e.Left)
 				l = stack.pop()
 				expr(e.Right)
@@ -339,12 +339,16 @@ func (u *Unit) rule(o object, _r ir.Rule) {
 			halt.As(100, reflect.TypeOf(e))
 		}
 	}
+	expr(e)
+	return stack.pop()
+}
 
+func (u *Unit) rule(o object, _r ir.Rule) {
 	switch r := _r.(type) {
 	case *ir.AssignRule:
-		expr(r.Expr)
+		v := u.expr(r.Expr)
 		log.Println("for ", o.schema().Name)
-		set(o, stack.pop())
+		set(o, v)
 	default:
 		halt.As(100, reflect.TypeOf(r))
 	}
@@ -386,10 +390,21 @@ func Do(um Cluster, pre func(Cluster), old ...Cluster) (ret *sync.WaitGroup) {
 		pre(um)
 	}
 	for _, u := range um {
-		ret.Add(1)
 		_wg.Add(1)
+		ret.Add(1)
 		go func(this *Unit) {
 			rg := &sync.WaitGroup{}
+			for _, e := range this.code.Pre {
+				rg.Add(1)
+				go func(pre ir.Expression) {
+					v := this.expr(pre)
+					if !v.toBool() {
+						panic("precondition violated")
+					}
+					rg.Done()
+				}(e)
+			}
+			rg.Wait()
 			for v, r := range this.code.Rules {
 				rg.Add(1)
 				go func(o object, r ir.Rule) {
@@ -409,6 +424,17 @@ func Do(um Cluster, pre func(Cluster), old ...Cluster) (ret *sync.WaitGroup) {
 						}(imp.objects[f.Name], fr)
 					}
 				}
+			}
+			rg.Wait()
+			for _, e := range this.code.Post {
+				rg.Add(1)
+				go func(post ir.Expression) {
+					v := this.expr(post)
+					if !v.toBool() {
+						panic("precondition violated")
+					}
+					rg.Done()
+				}(e)
 			}
 			rg.Wait()
 			_wg.Done()
