@@ -76,6 +76,7 @@ const (
 	Infix
 	Pre
 	Post
+	Is
 
 	Eof
 )
@@ -117,7 +118,8 @@ func init() {
 		"UNDEF":   Undef,
 		"INFIX":   Infix,
 		"PRE":     Pre,
-		"POST":    Post}
+		"POST":    Post,
+		"IS":      Is}
 }
 
 func (s Symbol) String() (ret string) {

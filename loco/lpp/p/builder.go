@@ -34,6 +34,9 @@ func (b *exprBuilder) push(_e ir.Expression) {
 	case *ir.Monadic:
 		e.Expr = b.pop()
 		b.stack.PushFront(e)
+	case *ir.TypeTest:
+		e.Operand = b.pop()
+		b.stack.PushFront(e)
 	case *ir.Dyadic:
 		e.Right = b.pop()
 		e.Left = b.pop()

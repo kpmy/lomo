@@ -1,3 +1,12 @@
+UNIT Is
+	VAR a, b ANY; x0 TRILEAN; x1 BOOLEAN
+PROCESS
+	UNDEF -> a
+	40 -> b
+	b IS INTEGER -> x0
+	a = UNDEF -> x1
+END Is
+
 UNIT Std
 	VAR x INTEGER
 PROCESS
@@ -38,7 +47,7 @@ UNIT Infix
 	VAR x INTEGER; pi REAL
 PROCESS
 	4 \Max 5 -> x
-	\Pi 2 -> pi
+	\Pi x -> pi
 END Infix
 
 UNIT Selectors
@@ -288,6 +297,7 @@ UNIT Top
 		inf Infix
 		pr Pre
 		st Std
+		is Is
 PROCESS
 	w -> a.x
 	18 -> w

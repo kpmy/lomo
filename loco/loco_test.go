@@ -10,10 +10,12 @@ import (
 	"lomo/loco/lss"
 	"lomo/loom"
 	"os"
+	"runtime"
 	"testing"
 )
 
 func TestBasics(t *testing.T) {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	if f, err := os.Open("Basic.lomo"); err == nil {
 		sc := lss.ConnectTo(bufio.NewReader(f))
 		for err == nil {

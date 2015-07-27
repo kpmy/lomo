@@ -148,6 +148,12 @@ func conv(v *value, target types.Type) (ret *value) {
 		ret = &value{typ: target, val: x}
 	case v.typ == types.ANY && target == types.ATOM:
 		ret = &value{typ: target, val: Atom("")}
+	case target == types.ANY && v.typ != types.ANY:
+		x := ThisAny(v)
+		ret = &value{typ: target, val: x}
+	case target == types.ANY && v.typ == types.ANY:
+		x := v.toAny()
+		ret = &value{typ: target, val: x}
 	case v.typ == target:
 		ret = v
 	}

@@ -64,3 +64,10 @@ type WrappedExpression interface {
 	Expression
 	Process() Expression
 }
+
+type TypeTest struct {
+	Typ     Type
+	Operand Expression
+}
+
+func (t *TypeTest) Print() string { return "type test expr" }

@@ -237,6 +237,16 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			e.Encode(n)
 		}
 		e.EncodeToken(start.End())
+	case *ir.TypeTest:
+		start.Name.Local = "type-test-expression"
+		assert.For(x.Typ.Basic, 20)
+		u.attr(&start, "type", x.Typ.Builtin.Code.String())
+		e.EncodeToken(start)
+		{
+			n := &extern{x: x.Operand}
+			e.Encode(n)
+		}
+		e.EncodeToken(start.End())
 	case *ir.Dyadic:
 		start.Name.Local = "dyadic-expression"
 		u.attr(&start, "op", x.Op.String())
@@ -581,6 +591,21 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 			switch x := _x.(type) {
 			case ir.Expression:
 				m.Expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "type-test-expression":
+		t := &ir.TypeTest{}
+		typ := i.attr(&start, "type").(string)
+		t.Typ.Basic = true
+		t.Typ.Builtin = &ir.BuiltinType{Code: types.TypMap[typ]}
+		i.x = t
+		i.consume(t)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				t.Operand = x
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}

@@ -7,6 +7,7 @@ import (
 	"lomo/ir"
 	"lomo/ir/ops"
 	"lomo/ir/types"
+	"lomo/loco/lpp"
 	"lomo/loco/lss"
 	"strconv"
 )
@@ -162,6 +163,21 @@ func (p *common) number() (t types.Type, v interface{}) {
 		p.mark("unknown number format `", p.sym.NumberOpts.Modifier, "`")
 	}
 	return
+}
+
+func (p *common) typ(resolve lpp.ForeignResolver, t *ir.Type) {
+	assert.For(p.sym.Code == lss.Ident, 20, "type identifier expected here but found ", p.sym.Code)
+	id := p.ident()
+	if it := types.TypMap[id]; it != types.UNDEF {
+		t.Basic = true
+		t.Builtin = &ir.BuiltinType{Code: it}
+	} else if ft := resolve(id); ft != nil { //append import resolver
+		t.Basic = false
+		t.Foreign = ft
+	} else {
+		p.mark("undefined type ", id)
+	}
+	p.next()
 }
 
 func (p *common) inside(b *selectBuilder) {
@@ -423,6 +439,12 @@ func (p *common) cmp(b *exprBuilder) {
 		p.pass(lss.Separator)
 		p.quantum(b)
 		b.push(&ir.Dyadic{Op: ops.Map(op)})
+	case lss.Is:
+		p.next()
+		p.pass(lss.Separator)
+		t := ir.Type{}
+		p.typ(b.tgt.resolve, &t) //second arg
+		b.push(&ir.TypeTest{Typ: t})
 	case lss.Infixate:
 		p.next()
 		p.expect(lss.Ident, "identifier expected")

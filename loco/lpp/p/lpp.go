@@ -6,7 +6,6 @@ import (
 	"log"
 	"lomo/ir"
 	"lomo/ir/mods"
-	"lomo/ir/types"
 	"lomo/loco/lpp"
 	"lomo/loco/lss"
 )
@@ -24,21 +23,6 @@ type pr struct {
 func (p *pr) init() {
 	p.debug = true
 	p.target.marker = p
-	p.next()
-}
-
-func (p *pr) typ(t *ir.Type) {
-	assert.For(p.sym.Code == lss.Ident, 20, "type identifier expected here but found ", p.sym.Code)
-	id := p.ident()
-	if it := types.TypMap[id]; it != types.UNDEF {
-		t.Basic = true
-		t.Builtin = &ir.BuiltinType{Code: it}
-	} else if ft := p.resolve(id); ft != nil { //append import resolver
-		t.Basic = false
-		t.Foreign = ft
-	} else {
-		p.mark("undefined type ", id)
-	}
 	p.next()
 }
 
@@ -113,7 +97,7 @@ func (p *pr) varDecl() {
 			}
 			if p.await(lss.Ident, lss.Separator) {
 				tb := &ir.Type{}
-				p.typ(tb)
+				p.typ(p.resolve, tb)
 				for _, v := range vl {
 					v.Type = *tb
 					if !tb.Basic {
@@ -241,7 +225,7 @@ func (p *pr) Unit() (u *ir.Unit, err error) {
 
 func lppc(sc lss.Scanner, r lpp.ForeignResolver) lpp.UnitParser {
 	ret := &pr{}
-	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False, lss.Null, lss.Undef, lss.Infix, lss.Pre, lss.Post)
+	sc.Init(lss.Unit, lss.End, lss.Var, lss.Process, lss.Reg, lss.Const, lss.True, lss.False, lss.Null, lss.Undef, lss.Infix, lss.Pre, lss.Post, lss.Is)
 	ret.sc = sc
 	ret._resolve = r
 	ret.init()

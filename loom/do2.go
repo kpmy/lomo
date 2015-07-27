@@ -337,6 +337,33 @@ func (u *Unit) expr(e ir.Expression) *value {
 			v := <-c
 			Close(cm).Wait()
 			stack.push(&v)
+		case *ir.TypeTest:
+			expr(e.Operand)
+			v := stack.pop()
+			var a *Any
+			switch v.typ {
+			case types.ANY:
+				a = v.toAny()
+			/*case types.PTR:
+			p := v.toPtr()
+			if p.adr != 0 {
+				a = p.link.Get()
+			} else {
+				a = &Any{}
+			} */
+			default:
+				halt.As(100, "unsupported ")
+			}
+			switch {
+			case a.x == nil:
+				stack.push(&value{typ: types.TRILEAN, val: tri.NIL})
+			case a.x != nil && a.typ == e.Typ.Builtin.Code:
+				stack.push(&value{typ: types.TRILEAN, val: tri.TRUE})
+			case a.x != nil && a.typ != e.Typ.Builtin.Code:
+				stack.push(&value{typ: types.TRILEAN, val: tri.FALSE})
+			default:
+				halt.As(100, "unhandled type testing for ", v.typ, v.val)
+			}
 		default:
 			halt.As(100, reflect.TypeOf(e))
 		}
