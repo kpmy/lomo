@@ -22,6 +22,8 @@ const (
 	MAP
 	SET
 
+	UNIT
+
 	none
 )
 
@@ -53,6 +55,8 @@ func (t Type) String() string {
 		return "MAP"
 	case SET:
 		return "SET"
+	case UNIT:
+		return "UNIT"
 	default:
 		return strconv.Itoa(int(t))
 	}

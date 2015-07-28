@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
+	"lomo/ir"
 	"lomo/ir/ops"
 	"lomo/ir/types"
 	"math/big"
@@ -388,8 +389,36 @@ func NewAny(typ types.Type, val interface{}) *Any {
 	return &Any{typ: typ, x: val}
 }
 
+type Ref struct {
+	u *ir.Unit
+}
+
+func (p *Ref) This() *ir.Unit {
+	return p.u
+}
+
+func (p *Ref) String() string {
+	if p.u != nil {
+		return fmt.Sprint("@", p.u.Name)
+	} else {
+		return fmt.Sprint("@", "undef")
+	}
+}
+
+func NewRef(u *ir.Unit) *Ref {
+	return &Ref{u: u}
+}
+
+func ThisRef(p *Ref) *Ref {
+	ret := &Ref{}
+	ret.u = p.u
+	return ret
+}
+
 func compTypes(propose, expect types.Type) (ret bool) {
 	switch {
+	case propose == types.ANY && expect == types.UNIT:
+		ret = true
 	case propose == types.INTEGER && expect == types.REAL:
 		ret = true
 	case propose == types.BOOLEAN && expect == types.TRILEAN:
@@ -406,6 +435,10 @@ func compTypes(propose, expect types.Type) (ret bool) {
 
 func conv(v *value, target types.Type) (ret *value) {
 	switch {
+	case v.typ == types.ANY && target == types.UNIT:
+		a := v.toAny()
+		assert.For(a.x == nil, 20)
+		ret = &value{typ: types.UNIT, val: &Ref{}}
 	case v.typ == types.INTEGER && target == types.REAL:
 		i := v.toInt()
 		x := big.NewRat(0, 1)

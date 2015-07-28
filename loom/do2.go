@@ -458,7 +458,7 @@ func Init(_top string, ld Loader) (ret map[string]*Unit) {
 		}
 	}
 	if std := lpp.Std[_top]; std != nil {
-		ret[_top] = stdUnit(std)
+		ret[_top] = stdUnit(std, ld)
 		run(ret[_top])
 	} else if top := ld(_top); top != nil {
 		ret[_top] = &Unit{code: top, loader: ld}

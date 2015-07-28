@@ -1,3 +1,10 @@
-UNIT Top
+UNIT Dyn
+END Dyn
 
+UNIT Top
+	VAR d, e UNIT; ok0 BOOLEAN
+PROCESS
+	\LD "Dyn" -> d
+	UNDEF -> e
+	d = UNDEF -> ok0
 END Top

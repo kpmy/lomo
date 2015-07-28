@@ -3,6 +3,7 @@ package loom
 import (
 	"bufio"
 	"bytes"
+	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
 	"lomo/ir"
 	"lomo/ir/types"
@@ -19,6 +20,11 @@ UNIT RND
 	VAR res+, n- INTEGER
 	INFIX res n
 END RND
+
+UNIT LD
+	VAR res+ UNIT; name- STRING
+	INFIX res name
+END LD
 `
 
 type stdRule interface {
@@ -37,17 +43,33 @@ func (r *stdRnd) do(this *Unit, o object) {
 	set(o, &value{typ: types.INTEGER, val: ThisInt(n)})
 }
 
-func stdUnit(f ir.ForeignType) *Unit {
+type stdLd struct{}
+
+func (r *stdLd) Show() string { return "std ld" }
+
+func (r *stdLd) do(this *Unit, o object) {
+	n := get(this.objects["name"]).toStr()
+	if u := this.loader(n); u != nil {
+		set(o, &value{typ: types.UNIT, val: NewRef(u)})
+	} else {
+		halt.As(100, "unresolved unit ", n)
+	}
+}
+
+func stdUnit(f ir.ForeignType, ld Loader) *Unit {
 	fake := ir.NewUnit(f.Name())
 	fake.Variables = f.Variables()
 	fake.Infix = f.Infix()
 	switch f.Name() {
 	case "RND":
 		fake.Rules["res"] = &stdRnd{}
+	case "LD":
+		assert.For(ld != nil, 20)
+		fake.Rules["res"] = &stdLd{}
 	default:
 		halt.As(100, "unknown standard unit ", f.Name())
 	}
-	return &Unit{code: fake}
+	return &Unit{code: fake, loader: ld}
 }
 
 func precompile() {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"lomo/ir"
 	"lomo/ir/mods"
+	"lomo/ir/types"
 	"lomo/loco/lpp"
 	"lomo/loco/lss"
 )
@@ -106,6 +107,15 @@ func (p *pr) varDecl() {
 					if !tb.Basic && v.Modifier != mods.NONE {
 						p.mark("only hidden foreigns allowed")
 					}
+					p.target.obj(v.Name, v)
+				}
+			} else if p.is(lss.Unit) {
+				p.next()
+				tb := ir.Type{}
+				tb.Basic = true
+				tb.Builtin = &ir.BuiltinType{Code: types.UNIT}
+				for _, v := range vl {
+					v.Type = tb
 					p.target.obj(v.Name, v)
 				}
 			} else {

@@ -182,6 +182,17 @@ func (v *value) asMap() (ret *Map) {
 	return
 }
 
+func (v *value) toRef() (ret *Ref) {
+	assert.For(v.typ == types.UNIT, 20)
+	switch x := v.val.(type) {
+	case *Ref:
+		ret = ThisRef(x)
+	default:
+		halt.As(100, "wrong list ", reflect.TypeOf(x))
+	}
+	return
+}
+
 func cval(e *ir.ConstExpr) (ret *value) {
 	t := e.Type
 	switch t {
