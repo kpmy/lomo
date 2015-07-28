@@ -1,3 +1,14 @@
+UNIT Dyn
+END Dyn
+
+UNIT DynLoad
+	VAR d, e UNIT; ok0 BOOLEAN
+PROCESS
+	\LD "Dyn" -> d
+	UNDEF -> e
+	d = UNDEF -> ok0
+END DynLoad
+
 UNIT Lists
 	CONST l = [1, 2, 3, 4]
 	VAR x ANY; i INTEGER
@@ -338,6 +349,7 @@ UNIT Top
 		st Std
 		is Is
 		stru Structs
+		dyn DynLoad
 PROCESS
 	w -> a.x
 	18 -> w
