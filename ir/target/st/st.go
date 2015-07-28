@@ -285,6 +285,44 @@ func (u *extern) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 			e.Encode(n)
 		}
 		e.EncodeToken(start.End())
+	case *ir.ListExpr:
+		start.Name.Local = "list-expression"
+		e.EncodeToken(start)
+		for _, v := range x.Expr {
+			n := &extern{x: v}
+			e.Encode(n)
+		}
+		e.EncodeToken(start.End())
+	case *ir.SetExpr:
+		start.Name.Local = "set-expression"
+		e.EncodeToken(start)
+		for _, v := range x.Expr {
+			n := &extern{x: v}
+			e.Encode(n)
+		}
+		e.EncodeToken(start.End())
+	case *ir.MapExpr:
+		start.Name.Local = "map-expression"
+		e.EncodeToken(start)
+		for i, v := range x.Key {
+			key := xml.StartElement{}
+			u.attr(&key, "index", i)
+			key.Name.Local = "key"
+			e.EncodeToken(key)
+			n := &extern{x: v}
+			e.Encode(n)
+			e.EncodeToken(key.End())
+		}
+		for i, v := range x.Value {
+			val := xml.StartElement{}
+			u.attr(&val, "index", i)
+			val.Name.Local = "value"
+			e.EncodeToken(val)
+			n := &extern{x: v}
+			e.Encode(n)
+			e.EncodeToken(val.End())
+		}
+		e.EncodeToken(start.End())
 	default:
 		halt.As(100, reflect.TypeOf(x))
 	}
@@ -326,6 +364,20 @@ func (p *post) Print() string { return "post" }
 func (p *pre) Process() ir.Expression  { return p.expr }
 func (p *post) Process() ir.Expression { return p.expr }
 
+type key struct {
+	expr ir.Expression
+}
+
+type val struct {
+	expr ir.Expression
+}
+
+func (p *key) Print() string { return "key" }
+func (p *val) Print() string { return "val" }
+
+func (p *key) Process() ir.Expression { return p.expr }
+func (p *val) Process() ir.Expression { return p.expr }
+
 func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 	for _, x := range start.Attr {
 		if x.Name.Local == name {
@@ -340,6 +392,7 @@ func (i *intern) attr(start *xml.StartElement, name string) (ret interface{}) {
 	}
 	return
 }
+
 func (i *intern) data(t types.Type, cd xml.CharData) (ret interface{}) {
 	switch t {
 	case types.INTEGER, types.REAL:
@@ -493,6 +546,30 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 		}
 	case "postcondition":
 		p := &post{}
+		i.x = p
+		i.consume(p)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				p.expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "key":
+		p := &key{}
+		i.x = p
+		i.consume(p)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				p.expr = x
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "value":
+		p := &val{}
 		i.x = p
 		i.consume(p)
 		consumer = func(_x interface{}) {
@@ -657,6 +734,44 @@ func (i *intern) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error
 			switch x := _x.(type) {
 			case ir.Expression:
 				inf.Args = append(inf.Args, x)
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "list-expression":
+		l := &ir.ListExpr{}
+		i.x = l
+		i.consume(l)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				l.Expr = append(l.Expr, x)
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "set-expression":
+		l := &ir.SetExpr{}
+		i.x = l
+		i.consume(l)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case ir.Expression:
+				l.Expr = append(l.Expr, x)
+			default:
+				halt.As(100, reflect.TypeOf(x))
+			}
+		}
+	case "map-expression":
+		l := &ir.MapExpr{}
+		i.x = l
+		i.consume(l)
+		consumer = func(_x interface{}) {
+			switch x := _x.(type) {
+			case *key:
+				l.Key = append(l.Key, x)
+			case *val:
+				l.Value = append(l.Value, x)
 			default:
 				halt.As(100, reflect.TypeOf(x))
 			}

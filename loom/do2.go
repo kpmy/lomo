@@ -3,6 +3,7 @@ package loom
 import (
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
+	"github.com/kpmy/ypk/fn"
 	"github.com/kpmy/ypk/halt"
 	"log"
 	"lomo/ir"
@@ -98,15 +99,25 @@ func (u *Unit) expr(e ir.Expression) *value {
 				case e.Inner == mods.LIST && len(e.ExprList) == 1: //single item
 					expr(e.ExprList[0])
 					_i := stack.pop()
-					idx := int(_i.toInt().Int64())
 
 					switch base.typ {
 					case types.STRING:
+						idx := int(_i.toInt().Int64())
 						s := []rune(base.toStr())
 						assert.For(idx >= 0 && idx < len(s), 40)
 						stack.push(&value{typ: types.CHAR, val: s[idx]})
+					case types.MAP:
+						idx := ThisAny(_i)
+						m := base.asMap()
+						data := m.Get(idx)
+						stack.push(&value{typ: types.ANY, val: data})
+					case types.LIST:
+						idx := int(_i.toInt().Int64())
+						l := base.asList()
+						data := l.Get(idx)
+						stack.push(&value{typ: types.ANY, val: data})
 					default:
-						halt.As(100, "not indexable", base.typ)
+						halt.As(100, "not indexable ", base.typ)
 					}
 				case e.Inner == mods.LIST && len(e.ExprList) > 1: //some items
 					switch base.typ {
@@ -123,7 +134,7 @@ func (u *Unit) expr(e ir.Expression) *value {
 						}
 						stack.push(&value{typ: types.STRING, val: string(ret)})
 					default:
-						halt.As(100, "not indexable")
+						halt.As(100, "not indexable ")
 					}
 				case e.Inner == mods.RANGE && len(e.ExprList) == 2: //range min (from, to) .. max(from, to) with reverse
 					expr(e.ExprList[0])
@@ -144,7 +155,7 @@ func (u *Unit) expr(e ir.Expression) *value {
 							}
 							stack.push(&value{typ: types.STRING, val: string(ret)})
 						default:
-							halt.As(100, "not indexable", base.typ)
+							halt.As(100, "not indexable ", base.typ)
 						}
 					} else {
 						switch base.typ {
@@ -157,7 +168,7 @@ func (u *Unit) expr(e ir.Expression) *value {
 							}
 							stack.push(&value{typ: types.STRING, val: string(ret)})
 						default:
-							halt.As(100, "not indexable", base.typ)
+							halt.As(100, "not indexable ", base.typ)
 						}
 					}
 				case e.Inner == mods.RANGE && len(e.ExprList) == 1: //open range from `from` to the end of smth
@@ -175,10 +186,22 @@ func (u *Unit) expr(e ir.Expression) *value {
 						}
 						stack.push(&value{typ: types.STRING, val: string(ret)})
 					default:
-						halt.As(100, "not indexable")
+						halt.As(100, "not indexable ")
+					}
+				case e.Inner == mods.DEREF:
+					switch base.typ {
+					case types.ANY:
+						a := base.toAny()
+						if !fn.IsNil(a.x) {
+							stack.push(&value{typ: a.typ, val: a.x})
+						} else {
+							halt.As(100, "undef dereference read")
+						}
+					default:
+						halt.As(101, "not a ref ", base.typ)
 					}
 				default:
-					halt.As(100, "unexpected selector ", base)
+					halt.As(100, "unexpected selector ", base, e.Inner)
 				}
 			}
 		case *ir.Monadic:
@@ -194,7 +217,7 @@ func (u *Unit) expr(e ir.Expression) *value {
 				case types.REAL:
 					i := v.toReal()
 					i = i.Neg(i)
-					stack.push(&value{typ: v.typ, val: ThisRat(i)})
+					v = &value{typ: v.typ, val: ThisRat(i)}
 				default:
 					halt.As(100, v.typ)
 				}
@@ -205,12 +228,12 @@ func (u *Unit) expr(e ir.Expression) *value {
 					v = &value{typ: v.typ, val: !b}
 				case types.TRILEAN:
 					t := v.toTril()
-					stack.push(&value{typ: v.typ, val: tri.Not(t)})
-				/*case types.SET:
-				s := v.toSet()
-				ns := ThisSet(s)
-				ns.inv = !ns.inv
-				ctx.push(&value{typ: v.typ, val: ns})*/
+					v = &value{typ: v.typ, val: tri.Not(t)}
+				case types.SET:
+					s := v.toSet()
+					ns := ThisSet(s)
+					ns.inv = !ns.inv
+					v = &value{typ: v.typ, val: ns}
 				default:
 					halt.As(100, "unexpected logical type")
 				}
@@ -244,6 +267,9 @@ func (u *Unit) expr(e ir.Expression) *value {
 			if !(e.Op == ops.Or || e.Op == ops.And) {
 				expr(e.Left)
 				l = stack.pop()
+				if e.Op == ops.In {
+					l = &value{typ: types.ANY, val: ThisAny(l)}
+				}
 				expr(e.Right)
 				r = stack.pop()
 				v := calcDyadic(l, e.Op, r)
@@ -364,6 +390,36 @@ func (u *Unit) expr(e ir.Expression) *value {
 			default:
 				halt.As(100, "unhandled type testing for ", v.typ, v.val)
 			}
+		case *ir.ListExpr:
+			var tmp []*value
+			for _, x := range e.Expr {
+				expr(x)
+				v := stack.pop()
+				tmp = append(tmp, v)
+			}
+			stack.push(&value{typ: types.LIST, val: NewList(tmp...)})
+		case *ir.SetExpr:
+			var tmp []*value
+			for _, x := range e.Expr {
+				expr(x)
+				v := stack.pop()
+				tmp = append(tmp, v)
+			}
+			stack.push(&value{typ: types.SET, val: NewSet(tmp...)})
+		case *ir.MapExpr:
+			var k []*value
+			for _, x := range e.Key {
+				expr(x)
+				v := stack.pop()
+				k = append(k, v)
+			}
+			var v []*value
+			for _, x := range e.Value {
+				expr(x)
+				n := stack.pop()
+				v = append(v, n)
+			}
+			stack.push(&value{typ: types.MAP, val: NewMap(k, v)})
 		default:
 			halt.As(100, reflect.TypeOf(e))
 		}

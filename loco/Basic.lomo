@@ -1,3 +1,42 @@
+UNIT Lists
+	CONST l = [1, 2, 3, 4]
+	VAR x ANY; i INTEGER
+PROCESS
+	l[0] # UNDEF ? l[0] : 0 -> x
+	x$ -> i
+END Lists
+
+UNIT Maps
+	CONST m = <<"a": 'a', "b": 'b'>>
+	VAR x ANY; c CHAR
+PROCESS
+	m["b"] # UNDEF ? m["a"] : 0 -> x
+	x$ -> c
+END Maps
+
+UNIT Sets
+	VAR a, b, c, s0, s1 SET; ok0, ok1, ok2 BOOLEAN
+PROCESS
+	{0, 1, 2, 3} -> a
+	{2, 4, 3, 5} -> b
+	~b -> c
+	a + b -> s0
+	a * b -> s1
+	a = b -> ok0
+	3 IN b -> ok1
+	b # c -> ok2
+END Sets
+
+UNIT Structs
+	CONST ll = [1, 3, "a"]; mm = <<"a": 'a', "b": 'b', "c": 3>>; ss = {1, 2, 3}
+	VAR l LIST; m MAP; s SET
+	VAR t0 Lists; t1 Maps; t2 Sets
+PROCESS
+	ll -> l
+	mm -> m
+	ss -> s
+END Structs
+
 UNIT Is
 	VAR a, b ANY; x0 TRILEAN; x1 BOOLEAN
 PROCESS
@@ -298,6 +337,7 @@ UNIT Top
 		pr Pre
 		st Std
 		is Is
+		stru Structs
 PROCESS
 	w -> a.x
 	18 -> w

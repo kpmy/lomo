@@ -80,6 +80,274 @@ func ThisCmp(c *Cmp) (ret *Cmp) {
 	return
 }
 
+type Map struct {
+	k []*Any
+	v []*Any
+}
+
+func (m *Map) Keys() []*Any {
+	return m.k
+}
+
+func (m *Map) AsList() (ret []*Any) {
+	return m.v
+}
+
+func (m *Map) String() (ret string) {
+	for i, x := range m.k {
+		if i > 0 {
+			ret = fmt.Sprint(ret, ", ")
+		}
+		ret = fmt.Sprint(ret, x, ":", m.v[i])
+	}
+	return fmt.Sprint("<", ret, ">")
+}
+
+func ThisMap(m *Map) (ret *Map) {
+	ret = &Map{}
+	for _, k := range m.k {
+		n := &Any{typ: k.typ, x: k.x}
+		ret.k = append(ret.k, n)
+	}
+	for _, v := range m.v {
+		n := &Any{typ: v.typ, x: v.x}
+		ret.v = append(ret.v, n)
+	}
+	return
+}
+
+func NewMap(_k, _v []*value) (ret *Map) {
+	ret = &Map{}
+	for _, k := range _k {
+		ret.k = append(ret.k, ThisAny(k))
+	}
+	for _, v := range _v {
+		ret.v = append(ret.v, ThisAny(v))
+	}
+	return
+}
+
+func (m *Map) In(a *Any) (idx int) {
+	assert.For(a != nil, 20)
+	idx = -1
+	for i, x := range m.k {
+		if x.Equal(a) {
+			idx = i
+			break
+		}
+	}
+	return
+}
+
+func (m *Map) Set(i *Any, a *Any) {
+	if x := m.In(i); x >= 0 {
+		m.v[x] = &Any{typ: a.typ, x: a.x}
+	} else {
+		m.k = append(m.k, &Any{typ: i.typ, x: i.x})
+		m.v = append(m.v, &Any{typ: a.typ, x: a.x})
+	}
+}
+
+func (m *Map) Get(i *Any) (ret *Any) {
+	ret = &Any{}
+	if x := m.In(i); x >= 0 {
+		n := &Any{typ: m.v[x].typ, x: m.v[x].x}
+		ret = n
+	}
+	return
+}
+
+type Set struct {
+	inv bool
+	x   []*Any
+}
+
+func (s *Set) String() (ret string) {
+	for i, x := range s.x {
+		if i > 0 {
+			ret = fmt.Sprint(ret, ", ")
+		}
+		ret = fmt.Sprint(ret, x)
+	}
+	if s.inv {
+		return fmt.Sprint("}", ret, "{")
+	} else {
+		return fmt.Sprint("{", ret, "}")
+	}
+}
+
+func (s *Set) In(a *Any) (idx int) {
+	assert.For(a != nil, 20)
+	idx = -1
+	for i, x := range s.x {
+		if x.Equal(a) {
+			idx = i
+			break
+		}
+	}
+	return
+}
+
+func (s *Set) Incl(a *Any) {
+	assert.For(a.x != nil, 20)
+	if s.In(a) < 0 {
+		s.x = append(s.x, a)
+	}
+}
+
+func (s *Set) Excl(a *Any) {
+	assert.For(a.x != nil, 20)
+	var tmp []*Any
+	if i := s.In(a); i >= 0 {
+		for idx, x := range s.x {
+			if idx != i {
+				tmp = append(tmp, x)
+			}
+		}
+		s.x = tmp
+	}
+}
+
+func (s *Set) Sum(x *Set) {
+	assert.For(x != nil, 20)
+	for _, v := range x.x {
+		s.Incl(v)
+	}
+}
+
+func (s *Set) Diff(x *Set) {
+	assert.For(x != nil, 20)
+	for _, v := range x.x {
+		s.Excl(v)
+	}
+}
+
+func (s *Set) Prod(x *Set) {
+	assert.For(x != nil, 20)
+	for _, v := range s.x {
+		if x.In(v) < 0 {
+			s.Excl(v)
+		}
+	}
+}
+
+func (s *Set) Quot(x *Set) {
+	assert.For(x != nil, 20)
+	tmp := &Set{}
+	tmp.Sum(s)
+	tmp.Prod(x)
+	for _, v := range x.x {
+		if tmp.In(v) < 0 {
+			s.Incl(v)
+		}
+	}
+	for _, v := range s.x {
+		if tmp.In(v) >= 0 {
+			s.Excl(v)
+		}
+	}
+}
+
+func (s *Set) AsList() (ret []*Any) {
+	for _, x := range s.x {
+		ret = append(ret, x)
+	}
+	return
+}
+
+func (s *Set) IsEmpty() bool {
+	return len(s.x) == 0
+}
+
+func NewSet(v ...*value) (s *Set) {
+	s = &Set{}
+	for _, x := range v {
+		s.Incl(ThisAny(x))
+	}
+	return
+}
+
+func ThisSet(s *Set) (ret *Set) {
+	ret = &Set{}
+	ret.inv = s.inv
+	for _, i := range s.x {
+		n := &Any{typ: i.typ, x: i.x}
+		ret.x = append(ret.x, n)
+	}
+	return
+}
+
+type List struct {
+	x []*Any
+}
+
+func (l *List) Len(n ...int) int {
+	if len(n) == 1 {
+		ln := n[0]
+		if ln == 0 {
+			l.x = nil
+		} else if len(l.x) > ln {
+			var tmp []*Any
+			for _, x := range l.x {
+				tmp = append(tmp, x)
+			}
+			l.x = tmp
+		} else if len(l.x) < ln {
+			for i := len(l.x); i < ln; i++ {
+				l.x = append(l.x, &Any{})
+			}
+		}
+	}
+	return len(l.x)
+}
+
+func (l *List) Set(i int, x *value) {
+	n := &Any{}
+	if x.typ == types.ANY {
+		t, d := x.toAny().This()
+		n.typ, n.x = t, d
+	} else {
+		n.typ = x.typ
+		n.x = x.val
+	}
+	l.x[i] = n
+}
+
+func (l *List) SetVal(i int, x *Any) {
+	l.Set(i, &value{typ: types.ANY, val: x})
+}
+
+func (l *List) Get(i int) *Any {
+	return l.x[i]
+}
+
+func (l *List) String() (ret string) {
+	for i, x := range l.x {
+		if i > 0 {
+			ret = fmt.Sprint(ret, ", ")
+		}
+		ret = fmt.Sprint(ret, x)
+	}
+	return fmt.Sprint("[", ret, "]")
+}
+
+func ThisList(l *List) (ret *List) {
+	ret = &List{}
+	for _, i := range l.x {
+		n := &Any{typ: i.typ, x: i.x}
+		ret.x = append(ret.x, n)
+	}
+	return
+}
+
+func NewList(v ...*value) (s *List) {
+	s = &List{}
+	for _, x := range v {
+		s.x = append(s.x, ThisAny(x))
+	}
+	return
+}
+
 type Any struct {
 	typ types.Type
 	x   interface{}

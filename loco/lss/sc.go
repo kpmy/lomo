@@ -77,6 +77,7 @@ const (
 	Pre
 	Post
 	Is
+	In
 
 	Eof
 )
@@ -119,7 +120,8 @@ func init() {
 		"INFIX":   Infix,
 		"PRE":     Pre,
 		"POST":    Post,
-		"IS":      Is}
+		"IS":      Is,
+		"IN":      In}
 }
 
 func (s Symbol) String() (ret string) {

@@ -210,6 +210,9 @@ func (p *common) inside(b *selectBuilder) {
 		}
 		p.expect(lss.Rbrak, "] expected", lss.Separator, lss.Delimiter)
 		p.next()
+	} else if p.is(lss.Deref) {
+		p.next()
+		b.deref()
 	}
 }
 
@@ -260,7 +263,7 @@ func (p *common) factor(b *exprBuilder) {
 				p.next()
 				s = sb.foreign(id, fid)
 			} else {
-				p.mark("variable not found")
+				p.mark("variable `" + id + "` not found")
 			}
 		} else {
 			fid = id
@@ -285,6 +288,27 @@ func (p *common) factor(b *exprBuilder) {
 		assert.For(s != nil, 60)
 		p.inside(sb)
 		b.push(sb.merge(s))
+	case lss.Lbrak:
+		p.next()
+		r := &ir.ListExpr{}
+		for stop := false; !stop; {
+			p.pass(lss.Separator, lss.Delimiter)
+			if !p.is(lss.Rbrak) {
+				expr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+				p.expression(expr)
+				r.Expr = append(r.Expr, expr.final())
+				if p.await(lss.Comma, lss.Separator) {
+					p.next()
+				} else {
+					stop = true
+				}
+			} else { //empty set
+				stop = true
+			}
+		}
+		p.expect(lss.Rbrak, "] expected", lss.Separator)
+		p.next()
+		b.push(r)
 	case lss.True, lss.False:
 		val := &ir.ConstExpr{}
 		val.Type = types.BOOLEAN
@@ -318,6 +342,53 @@ func (p *common) factor(b *exprBuilder) {
 		p.expect(lss.Rparen, ") expected", lss.Separator)
 		p.next()
 		b.push(expr)
+	case lss.Lbrace:
+		p.next()
+		r := &ir.SetExpr{}
+		for stop := false; !stop; {
+			p.pass(lss.Separator, lss.Delimiter)
+			if !p.is(lss.Rbrace) {
+				expr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+				p.expression(expr)
+				r.Expr = append(r.Expr, expr.final())
+				if p.await(lss.Comma, lss.Separator) {
+					p.next()
+				} else {
+					stop = true
+				}
+			} else { //empty set
+				stop = true
+			}
+		}
+		p.expect(lss.Rbrace, "} expected", lss.Separator)
+		p.next()
+		b.push(r)
+	case lss.Lbrux:
+		p.next()
+		r := &ir.MapExpr{}
+		for stop := false; !stop; {
+			p.pass(lss.Separator, lss.Delimiter)
+			if !p.is(lss.Rbrux) {
+				kexpr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+				p.expression(kexpr)
+				r.Key = append(r.Key, kexpr.final())
+				p.expect(lss.Colon, "colon expected", lss.Separator)
+				p.next()
+				vexpr := &exprBuilder{tgt: b.tgt, marker: b.marker}
+				p.expression(vexpr)
+				r.Value = append(r.Value, vexpr.final())
+				if p.await(lss.Comma, lss.Separator) {
+					p.next()
+				} else {
+					stop = true
+				}
+			} else {
+				stop = true
+			}
+		}
+		p.expect(lss.Rbrux, "] expected", lss.Separator)
+		p.next()
+		b.push(r)
 	case lss.Infixate:
 		p.next()
 		p.expect(lss.Ident, "identifier expected")
@@ -434,7 +505,7 @@ func (p *common) cmp(b *exprBuilder) {
 	p.quantum(b)
 	p.pass(lss.Separator)
 	switch op := p.sym.Code; op {
-	case lss.Equal, lss.Nequal, lss.Geq, lss.Leq, lss.Gtr, lss.Lss:
+	case lss.Equal, lss.Nequal, lss.Geq, lss.Leq, lss.Gtr, lss.Lss, lss.In:
 		p.next()
 		p.pass(lss.Separator)
 		p.quantum(b)

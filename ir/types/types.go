@@ -18,6 +18,10 @@ const (
 	ANY
 	COMPLEX
 
+	LIST
+	MAP
+	SET
+
 	none
 )
 
@@ -43,6 +47,12 @@ func (t Type) String() string {
 		return "ANY"
 	case COMPLEX:
 		return "COMPLEX"
+	case LIST:
+		return "LIST"
+	case MAP:
+		return "MAP"
+	case SET:
+		return "SET"
 	default:
 		return strconv.Itoa(int(t))
 	}

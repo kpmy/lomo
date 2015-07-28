@@ -126,7 +126,6 @@ func r_ir_ir_(fn func(*big.Rat, *big.Rat) *big.Rat) func(*big.Rat, *value) *big.
 	}
 }
 
-/*
 func set_(fn func(*value, *value) *Set) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.SET}
@@ -148,7 +147,7 @@ func set_set_set_(fn func(*Set, *Set) *Set) func(*Set, *value) *Set {
 		return fn(lc, rc)
 	}
 }
-*/
+
 func c_(fn func(*value, *value) *Cmp) func(*value, *value) *value {
 	return func(l *value, r *value) (ret *value) {
 		ret = &value{typ: types.COMPLEX}
@@ -446,7 +445,6 @@ func b_s_s_(fn func(string, string) bool) func(string, *value) bool {
 	}
 }
 
-/*
 func b_set_(fn func(*Set, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		ls := l.toSet()
@@ -461,6 +459,7 @@ func b_set_set_(fn func(*Set, *Set) bool) func(*Set, *value) bool {
 	}
 }
 
+/*
 func b_ptr_(fn func(*Ptr, *value) bool) func(*value, *value) bool {
 	return func(l *value, r *value) bool {
 		ls := l.toPtr()
@@ -474,14 +473,14 @@ func b_ptr_ptr_(fn func(*Ptr, *Ptr) bool) func(*Ptr, *value) bool {
 		return fn(ls, rs)
 	}
 }
-
+*/
 func b_z_set_(fn func(*Any, *Set) bool) func(*Any, *value) bool {
 	return func(lt *Any, r *value) bool {
 		ra := r.toSet()
 		return fn(lt, ra)
 	}
 }
-*/
+
 const (
 	less = -1
 	eq   = 0
@@ -863,7 +862,6 @@ func dyANY() {
 	}))))
 }
 
-/*
 func dySET() {
 	putDyadic(types.SET, types.SET, ops.Eq, b_(b_set_(b_set_set_(func(ls *Set, rs *Set) bool {
 		s := &Set{}
@@ -912,6 +910,7 @@ func dySET() {
 	}))))
 }
 
+/*
 func dyPTR() {
 	putDyadic(types.PTR, types.PTR, ops.Eq, b_(b_ptr_(b_ptr_ptr_(func(lp *Ptr, rp *Ptr) bool {
 		return lp.adr == rp.adr
@@ -964,7 +963,7 @@ func init() {
 	dyCHAR2STRING()
 	dyABT()
 	dyANY()
-	/*dySET()
-	dyPTR()
-	dyPROC() */
+	dySET()
+	//dyPTR()
+	//dyPROC()
 }

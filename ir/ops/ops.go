@@ -110,7 +110,8 @@ func init() {
 		scanner.Leq:     Leq,
 		scanner.ArrowUp: Pow,
 		scanner.Ncmp:    Ncmp,
-		scanner.Pcmp:    Pcmp}
+		scanner.Pcmp:    Pcmp,
+		scanner.In:      In}
 
 	OpMap = make(map[string]Operation)
 	for i := int(Undef); i < int(None); i++ {

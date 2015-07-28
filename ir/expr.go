@@ -71,3 +71,21 @@ type TypeTest struct {
 }
 
 func (t *TypeTest) Print() string { return "type test expr" }
+
+type SetExpr struct {
+	Expr []Expression
+}
+
+func (e *SetExpr) Print() string { return "set expr" }
+
+type ListExpr struct {
+	Expr []Expression
+}
+
+func (e *ListExpr) Print() string { return "list expr" }
+
+type MapExpr struct {
+	Key, Value []Expression
+}
+
+func (e *MapExpr) Print() string { return "map expr" }

@@ -29,7 +29,7 @@ func (b *exprBuilder) push(_e ir.Expression) {
 	switch e := _e.(type) {
 	case *exprBuilder:
 		b.stack.PushFront(e.final())
-	case *ir.ConstExpr, *ir.SelectExpr:
+	case *ir.ConstExpr, *ir.SelectExpr, *ir.ListExpr, *ir.MapExpr, *ir.SetExpr:
 		b.stack.PushFront(e)
 	case *ir.Monadic:
 		e.Expr = b.pop()
@@ -114,6 +114,10 @@ func (b *selectBuilder) upto(e ...ir.Expression) {
 	b.inner = &ir.SelectExpr{}
 	b.inner.Inner = mods.RANGE
 	b.inner.ExprList = append(b.inner.ExprList, e...)
+}
+
+func (b *selectBuilder) deref() {
+	b.inner = &ir.SelectExpr{Inner: mods.DEREF}
 }
 
 func (b *selectBuilder) merge(s *ir.SelectExpr) (sel *ir.SelectExpr) {

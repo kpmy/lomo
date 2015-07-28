@@ -14,6 +14,8 @@ const (
 
 	RANGE
 	LIST
+	DEREF
+
 	wrong
 )
 
@@ -26,7 +28,7 @@ func (m Modifier) String() string {
 }
 
 func init() {
-	ModSym = map[Modifier]lss.Symbol{IN: lss.Minus, OUT: lss.Plus, REG: lss.Reg, NONE: lss.None, LIST: lss.Comma, RANGE: lss.UpTo}
+	ModSym = map[Modifier]lss.Symbol{IN: lss.Minus, OUT: lss.Plus, REG: lss.Reg, NONE: lss.None, LIST: lss.Comma, RANGE: lss.UpTo, DEREF: lss.Deref}
 	SymMod = make(map[lss.Symbol]Modifier)
 	for k, v := range ModSym {
 		SymMod[v] = k
