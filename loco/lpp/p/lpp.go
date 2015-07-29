@@ -22,7 +22,7 @@ type pr struct {
 }
 
 func (p *pr) init() {
-	p.debug = true
+	p.debug = false
 	p.target.marker = p
 	p.next()
 }
