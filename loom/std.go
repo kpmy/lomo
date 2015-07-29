@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
+	"leaf/leaf"
+	"log"
 	"lomo/ir"
 	"lomo/ir/types"
 	"lomo/loco/lpp"
@@ -25,6 +27,11 @@ UNIT LD
 	VAR res+ UNIT; name- STRING
 	INFIX res name
 END LD
+
+UNIT LEAF
+	VAR out+ ANY; mod- STRING; in- ANY
+	INFIX out mod in
+END LEAF
 `
 
 type stdRule interface {
@@ -56,6 +63,27 @@ func (r *stdLd) do(this *Unit, o object) {
 	}
 }
 
+type stdLeaf struct{}
+
+func (r *stdLeaf) Show() string { return "std leaf" }
+
+func (r *stdLeaf) do(this *Unit, o object) {
+	mod := get(this.objects["mod"]).toStr()
+	if loader, err := leaf.Prepare(mod, true); loader != nil {
+		m, starter := loader()
+		ch := m.Input()
+		log.Println("start", mod)
+		go func() { starter(); m.Stop() }()
+		log.Println("started", mod)
+		ch <- map[interface{}]interface{}{"type": "sig", "sig": "lomo", "data": "ping"}
+		log.Println("send")
+
+		set(o, &value{typ: types.UNIT, val: &Any{}})
+	} else {
+		halt.As(100, "leaf machine not started ", err)
+	}
+}
+
 func stdUnit(f ir.ForeignType, ld Loader) *Unit {
 	fake := ir.NewUnit(f.Name())
 	fake.Variables = f.Variables()
@@ -66,6 +94,9 @@ func stdUnit(f ir.ForeignType, ld Loader) *Unit {
 	case "LD":
 		assert.For(ld != nil, 20)
 		fake.Rules["res"] = &stdLd{}
+	case "LEAF":
+		assert.For(ld != nil, 20)
+		fake.Rules["out"] = &stdLeaf{}
 	default:
 		halt.As(100, "unknown standard unit ", f.Name())
 	}

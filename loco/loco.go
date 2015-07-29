@@ -63,7 +63,7 @@ func main() {
 							return
 						}
 						var old loom.Cluster
-						for i := 0; i < 20; i++ {
+						for i := 0; i < 1; i++ {
 							mm := loom.Init("Top", ld)
 							loom.Do(mm, nil, old).Wait()
 							loom.Close(mm).Wait()

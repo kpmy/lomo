@@ -1,3 +1,5 @@
 UNIT Top
-
+	VAR x ANY
+PROCESS
+	<<"type": "ping">> \LEAF "TestEcho"  -> x
 END Top
