@@ -12,13 +12,11 @@ import (
 	"lomo/loco/lss"
 	"lomo/loom"
 	"os"
-	"runtime"
 )
 
 var name string
 
 func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	flag.StringVar(&name, "source", "Simple", "-source=name")
 }
 
