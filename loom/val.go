@@ -3,11 +3,11 @@ package loom
 import (
 	"container/list"
 	"fmt"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/types"
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
-	"lomo/ir"
-	"lomo/ir/types"
 	"math/big"
 	"reflect"
 )

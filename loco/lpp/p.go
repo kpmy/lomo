@@ -1,8 +1,8 @@
 package lpp
 
 import (
-	"lomo/ir"
-	"lomo/loco/lss"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/loco/lss"
 )
 
 type ForeignResolver func(name string) ir.ForeignType

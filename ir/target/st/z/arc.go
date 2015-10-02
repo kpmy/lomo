@@ -4,11 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/xml"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/target"
+	"github.com/kpmy/lomo/ir/target/st"
 	"github.com/kpmy/ypk/assert"
 	"io"
-	"lomo/ir"
-	"lomo/ir/target"
-	"lomo/ir/target/st"
 	"time"
 )
 

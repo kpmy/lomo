@@ -3,14 +3,14 @@ package main
 import (
 	"bufio"
 	"flag"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/target"
+	_ "github.com/kpmy/lomo/ir/target/st/z"
+	"github.com/kpmy/lomo/loco/lpp"
+	_ "github.com/kpmy/lomo/loco/lpp/p"
+	"github.com/kpmy/lomo/loco/lss"
+	"github.com/kpmy/lomo/loom"
 	"log"
-	"lomo/ir"
-	"lomo/ir/target"
-	_ "lomo/ir/target/st/z"
-	"lomo/loco/lpp"
-	_ "lomo/loco/lpp/p"
-	"lomo/loco/lss"
-	"lomo/loom"
 	"os"
 )
 

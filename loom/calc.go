@@ -2,11 +2,11 @@ package loom
 
 import (
 	"fmt"
+	"github.com/kpmy/lomo/ir/ops"
+	"github.com/kpmy/lomo/ir/types"
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
-	"lomo/ir/ops"
-	"lomo/ir/types"
 	"math/big"
 )
 

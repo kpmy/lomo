@@ -1,8 +1,8 @@
 package ops
 
 import (
+	scanner "github.com/kpmy/lomo/loco/lss"
 	"github.com/kpmy/ypk/assert"
-	scanner "lomo/loco/lss"
 	"strconv"
 )
 

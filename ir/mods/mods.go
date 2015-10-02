@@ -1,7 +1,7 @@
 package mods
 
 import (
-	"lomo/loco/lss"
+	"github.com/kpmy/lomo/loco/lss"
 )
 
 type Modifier int

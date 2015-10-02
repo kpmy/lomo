@@ -1,14 +1,14 @@
 package loom
 
 import (
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/mods"
+	"github.com/kpmy/lomo/ir/types"
 	"github.com/kpmy/trigo"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/fn"
 	"github.com/kpmy/ypk/halt"
 	"log"
-	"lomo/ir"
-	"lomo/ir/mods"
-	"lomo/ir/types"
 )
 
 type object interface {

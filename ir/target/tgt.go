@@ -5,7 +5,7 @@ import (
 )
 
 import (
-	"lomo/ir"
+	"github.com/kpmy/lomo/ir"
 )
 
 type Target interface {

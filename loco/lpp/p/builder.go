@@ -2,10 +2,10 @@ package p
 
 import (
 	"container/list"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/mods"
 	"github.com/kpmy/ypk/assert"
 	"github.com/kpmy/ypk/halt"
-	"lomo/ir"
-	"lomo/ir/mods"
 	"reflect"
 )
 

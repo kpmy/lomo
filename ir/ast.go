@@ -1,8 +1,8 @@
 package ir
 
 import (
-	"lomo/ir/mods"
-	"lomo/ir/types"
+	"github.com/kpmy/lomo/ir/mods"
+	"github.com/kpmy/lomo/ir/types"
 )
 
 type ForeignType interface {

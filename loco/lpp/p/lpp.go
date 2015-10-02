@@ -2,13 +2,13 @@ package p
 
 import (
 	"errors"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/mods"
+	"github.com/kpmy/lomo/ir/types"
+	"github.com/kpmy/lomo/loco/lpp"
+	"github.com/kpmy/lomo/loco/lss"
 	"github.com/kpmy/ypk/assert"
 	"log"
-	"lomo/ir"
-	"lomo/ir/mods"
-	"lomo/ir/types"
-	"lomo/loco/lpp"
-	"lomo/loco/lss"
 )
 
 type Marker interface {

@@ -1,9 +1,9 @@
 package p
 
 import (
-	"lomo/ir"
-	"lomo/ir/mods"
-	"lomo/loco/lpp"
+	"github.com/kpmy/lomo/ir"
+	"github.com/kpmy/lomo/ir/mods"
+	"github.com/kpmy/lomo/loco/lpp"
 )
 
 type variable struct {
