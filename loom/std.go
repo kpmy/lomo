@@ -3,7 +3,7 @@ package loom
 import (
 	"bufio"
 	"bytes"
-	"github.com/kpmy/leaf/leaf"
+	"github.com/kpmy/leaf/leafaux"
 	"github.com/kpmy/lomo/ir"
 	"github.com/kpmy/lomo/ir/types"
 	"github.com/kpmy/lomo/loco/lpp"
@@ -69,7 +69,7 @@ func (r *stdLeaf) Show() string { return "std leaf" }
 
 func (r *stdLeaf) do(this *Unit, o object) {
 	mod := get(this.objects["mod"]).toStr()
-	if loader, err := leaf.Prepare(mod, true); loader != nil {
+	if loader, err := leafaux.Prepare(mod, true); loader != nil {
 		m, starter := loader()
 		ch := m.Input()
 		log.Println("start", mod)
